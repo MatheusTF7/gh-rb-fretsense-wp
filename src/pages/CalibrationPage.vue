@@ -38,6 +38,11 @@
         <q-btn color="primary" no-caps :disable="busy || !contextReady" :label="t('timing.save')" @click="saveAdjustment(false)" />
         <q-btn outline no-caps :disable="busy || !contextReady" :label="t('timing.reset')" @click="saveAdjustment(true)" />
       </div>
+      <FeedbackBanner
+        v-if="message === 'saved' || message === 'restored'"
+        class="q-mt-md"
+        :message="messageText"
+      />
     </section>
 
     <section class="surface-card section-spacing">
@@ -55,7 +60,12 @@
       <p v-if="estimate" role="status">{{ t('timing.estimate', { offset: estimate.offsetMs, count: estimate.sampleCount, rejected: estimate.rejected, mad: estimate.madMs }) }}</p>
     </section>
 
-    <FeedbackBanner v-if="message" class="section-spacing" :message="t('timing.' + message)" :tone="message === 'saved' ? 'info' : 'error'" />
+    <FeedbackBanner
+      v-if="message && message !== 'saved' && message !== 'restored'"
+      class="section-spacing"
+      :message="messageText"
+      tone="error"
+    />
     <FeedbackBanner class="section-spacing" :message="storageMessage" :tone="calibrations.storageStatus === 'saved' ? 'info' : 'error'">
       <template v-if="calibrations.storageStatus === 'memory'" #actions>
         <q-btn flat no-caps :label="t('timing.retry')" @click="calibrations.retryStorage()" />
@@ -68,8 +78,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { CalibrationProfile } from '@/engine/domain';
+import type { CalibrationProfile, DeviceProfile } from '@/engine/domain';
 import { visualTime } from '@/engine/timing/calibrated-time';
+import { sameReference } from '@/engine/domain/validation';
 import { useInterfaceStore } from '@/stores/interface';
 import { useCalibrationStore } from '@/stores/calibration';
 import { BrowserInputAdapter, DEFAULT_KEYBOARD, GamepadDiscovery, type GamepadConnection } from '@/platform/input';
@@ -99,9 +110,10 @@ const connectionId = computed({
 });
 const connectionOptions = computed(() => matchingConnections.value.map((connection) => ({ value: connection.connectionId, label: (connection.index + 1) + ' · ' + connection.hardwareId })));
 const discoveryError = ref(false);
-const audioMode = ref<'enabled' | 'silent'>('enabled');
+const initialCalibration = latestCalibration(device.value);
+const audioMode = ref<'enabled' | 'silent'>(initialCalibration?.context.audioMode ?? 'enabled');
 const audioOptions = computed(() => [{ label: t('timing.enabled'), value: 'enabled' }, { label: t('timing.silent'), value: 'silent' }]);
-const outputLabel = ref('');
+const outputLabel = ref(initialCalibration?.context.audioOutputLabel ?? '');
 const outputConfirmed = ref(false);
 const outputId = ref<string | null>(null);
 const sampleRate = ref<number | null>(null);
@@ -109,10 +121,10 @@ const audioReady = ref(false);
 const context = computed(() => captureContext(audioMode.value, sampleRate.value, outputId.value, outputLabel.value));
 const contextReady = computed(() => audioMode.value === 'silent' || (audioReady.value && outputConfirmed.value));
 const matching = computed(() => calibrations.records.find((record) => matchesCalibration(record, device.value, context.value)));
-const judgmentOffset = ref<number | string | null>(0);
-const visualOffset = ref<number | string | null>(0);
-const method = ref<CalibrationProfile['method']>('default');
-const savedSampleCount = ref(0);
+const judgmentOffset = ref<number | string | null>(initialCalibration?.judgmentOffsetMs ?? 0);
+const visualOffset = ref<number | string | null>(initialCalibration?.visualOffsetMs ?? 0);
+const method = ref<CalibrationProfile['method']>(initialCalibration?.method ?? 'default');
+const savedSampleCount = ref(initialCalibration?.sampleCount ?? 0);
 const estimate = shallowRef<CalibrationEstimate | null>(null);
 const state = ref<'idle' | 'starting' | 'running'>('idle');
 const busy = computed(() => state.value !== 'idle');
@@ -121,7 +133,15 @@ const sampleCount = ref(0);
 const startAt = ref(0);
 const displayNow = ref(0);
 const captureArea = ref<HTMLElement | null>(null);
-const message = ref<'unavailable' | 'changed' | 'insufficient' | 'interrupted' | 'range' | 'storageLimit' | 'saved' | 'mismatch' | null>(null);
+const message = ref<'unavailable' | 'changed' | 'insufficient' | 'interrupted' | 'range' | 'storageLimit' | 'saved' | 'restored' | 'mismatch' | null>(initialCalibration ? 'restored' : null);
+const messageText = computed(() => {
+  if (message.value === 'saved' || message.value === 'restored') {
+    return t(`timing.${message.value}`, {
+      input: formatOffset(judgmentOffset.value), visual: formatOffset(visualOffset.value),
+    });
+  }
+  return message.value ? t(`timing.${message.value}`) : '';
+});
 const phase = computed(() => visualTime(displayNow.value - startAt.value, { visualOffsetMs: guided.value ? 0 : Number(visualOffset.value) }) / (60_000 / GUIDED.bpm));
 const pulse = computed(() => state.value === 'running' && phase.value >= 0 && phase.value < 20 && phase.value % 1 < 0.15);
 const runMessage = computed(() => state.value === 'starting' ? t('timing.starting') : state.value === 'idle' ? t('timing.idle')
@@ -140,6 +160,7 @@ let input: BrowserInputAdapter | null = null;
 let collector: GuidedCalibration | null = null;
 let operation = 0;
 let disposed = false;
+let restoringSelection = false;
 const metronome = new Metronome((reason) => {
   audioReady.value = false; outputConfirmed.value = false;
   if (reason === 'context-changed') resetContextAdjustment();
@@ -173,6 +194,33 @@ function interruptRound(reason: 'changed' | 'unavailable' | 'interrupted' | 'ins
   message.value = reason;
 }
 
+function latestCalibration(target: DeviceProfile, mode?: 'enabled' | 'silent'): CalibrationProfile | undefined {
+  return calibrations.records
+    .filter((record) => sameReference(record.deviceProfile, target) && (mode === undefined || record.context.audioMode === mode))
+    .reduce<CalibrationProfile | undefined>((latest, record) =>
+      !latest || record.createdAtIso > latest.createdAtIso ? record : latest, undefined);
+}
+
+function applySavedCalibration(profile: CalibrationProfile) {
+  judgmentOffset.value = profile.judgmentOffsetMs; visualOffset.value = profile.visualOffsetMs;
+  method.value = profile.method; savedSampleCount.value = profile.sampleCount; estimate.value = null;
+}
+
+function restoreSelectionCalibration() {
+  stopRound(); outputConfirmed.value = false; resetContextAdjustment();
+  const saved = latestCalibration(device.value, audioMode.value);
+  restoringSelection = true;
+  outputLabel.value = saved?.context.audioOutputLabel ?? '';
+  restoringSelection = false;
+  if (saved) applySavedCalibration(saved);
+  message.value = saved ? 'restored' : 'changed';
+}
+
+function formatOffset(value: number | string | null): string {
+  const offset = Number(value);
+  return offset > 0 ? `+${offset}` : String(offset);
+}
+
 async function prepareAudio() {
   stopRound(); state.value = 'starting'; message.value = null;
   const token = operation;
@@ -185,6 +233,9 @@ async function prepareAudio() {
   state.value = 'idle';
   if (!enabled) message.value = 'unavailable';
   else {
+    const saved = calibrations.records.find((record) => matchesCalibration(record, device.value, context.value));
+    if (saved) applySavedCalibration(saved);
+    message.value = saved ? 'restored' : 'changed';
     try { metronome.audition(); }
     catch { audioReady.value = false; message.value = 'unavailable'; }
   }
@@ -200,9 +251,8 @@ function resetContextAdjustment() {
 }
 function loadSaved() {
   if (!contextReady.value || !matching.value) return;
-  judgmentOffset.value = matching.value.judgmentOffsetMs; visualOffset.value = matching.value.visualOffsetMs;
-  method.value = matching.value.method; savedSampleCount.value = matching.value.sampleCount; estimate.value = null;
-  message.value = null;
+  applySavedCalibration(matching.value);
+  message.value = 'restored';
 }
 function saveAdjustment(reset: boolean) {
   if (!contextReady.value || busy.value) return;
@@ -211,8 +261,7 @@ function saveAdjustment(reset: boolean) {
     const profile = createCalibration(device.value, context.value, reset ? 'default' : method.value,
       reset ? 0 : Number(judgmentOffset.value), reset ? 0 : Number(visualOffset.value), reset ? 0 : savedSampleCount.value);
     try { calibrations.save(profile); } catch { message.value = 'storageLimit'; return; }
-    judgmentOffset.value = profile.judgmentOffsetMs; visualOffset.value = profile.visualOffsetMs;
-    method.value = profile.method; savedSampleCount.value = profile.sampleCount;
+    applySavedCalibration(profile);
     if (reset) estimate.value = null;
     message.value = 'saved';
   } catch { message.value = 'range'; }
@@ -293,9 +342,14 @@ function focusLeft(event: FocusEvent) {
   if (busy.value) interruptRound();
 }
 
-watch([device, audioMode, outputLabel], () => {
-  stopRound(); outputConfirmed.value = false; resetContextAdjustment(); message.value = 'changed';
-});
+watch([device, audioMode], restoreSelectionCalibration);
+watch(outputLabel, () => {
+  if (restoringSelection) return;
+  stopRound(); outputConfirmed.value = false; resetContextAdjustment();
+  const saved = calibrations.records.find((record) => matchesCalibration(record, device.value, context.value));
+  if (saved) applySavedCalibration(saved);
+  message.value = saved ? 'restored' : 'changed';
+}, { flush: 'sync' });
 watch(connectionId, () => { if (busy.value) interruptRound('changed'); outputConfirmed.value = false; });
 onMounted(() => {
   discovery = new GamepadDiscovery(); refreshDevices(); discoveryTimer = setInterval(refreshDevices, 1000);

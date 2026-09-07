@@ -21,7 +21,9 @@ Os dois campos admitem valores finitos entre −1.000 e +1.000 ms:
 
 **Ouvir/ver metrônomo** apresenta uma prévia finita de 20 pulsos. O atraso visual desloca somente a imagem; a prévia conserva a cauda visual final quando o atraso é positivo. Na coleta guiada, o ajuste visual existente é ignorado para que a referência não inclua uma correção anterior. A coleta também não desconta o ajuste de entrada anterior: a estimativa resultante é absoluta, não um incremento.
 
-**Carregar ajuste salvo** exige perfil/versão e contexto compatíveis. **Restaurar e salvar offsets zero** grava método `default`, ambos os offsets em zero e zero amostras. Em **Sem áudio**, a referência sonora é explicitamente indisponível, a coleta guiada fica desabilitada e continuam disponíveis ajustes manuais e prévia visual.
+Ao entrar na página, o ajuste mais recente do perfil é recarregado nos campos e seu modo/descrição de saída são restaurados. Em **Com áudio**, preparar o contexto revalida taxa e saída e reaplica automaticamente o registro exatamente compatível; os controles de calibração continuam exigindo a confirmação da saída atual. **Carregar ajuste salvo** permite reaplicar manualmente a correspondência exata. **Restaurar e salvar offsets zero** grava método `default`, ambos os offsets em zero e zero amostras. Em **Sem áudio**, a referência sonora é explicitamente indisponível, a coleta guiada fica desabilitada e continuam disponíveis ajustes manuais e prévia visual.
+
+Depois de **Salvar ajuste**, a confirmação com os valores de entrada e visual aparece junto aos botões, sem depender de rolagem até o fim da página. O aviso de armazenamento distingue persistência no navegador de retenção somente em memória.
 
 ## Uma referência de tempo
 
