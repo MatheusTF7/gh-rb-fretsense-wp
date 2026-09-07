@@ -43,7 +43,7 @@ O vínculo encaminha interrupções para pausa e mudança de contexto para aband
 
 ## Repositório pequeno e versionado
 
-`src/platform/preferences/repository.ts` usa a chave `fretsense.preferences.v1`, com `schemaVersion: 1`. Guarda idioma, tema, redução de efeitos, até 16 perfis e ID do perfil selecionado. A conexão física selecionada é transitória e precisa ser escolhida novamente; a busca no catálogo continua em memória durante a visita. Histórico e eventos de sessões não são gravados nesse repositório.
+`src/platform/preferences/repository.ts` usa a chave `fretsense.preferences.v1`, com `schemaVersion: 1`. Guarda idioma, tema, redução de efeitos, até 16 perfis e ID do perfil selecionado. A conexão física selecionada continua transitória, mas a store mantém durante a visita sua combinação de índice e identificação de hardware. Cada rota revalida essa escolha contra uma conexão descoberta no momento; quando há somente uma conexão compatível com o perfil, ela é selecionada automaticamente. O identificador efêmero da conexão não é persistido no `localStorage` nem reutilizado entre instâncias de descoberta. A busca no catálogo continua em memória durante a visita. Histórico e eventos de sessões não são gravados nesse repositório.
 
 Leitura valida tamanho máximo de 262.144 unidades de texto, esquema, perfis, referências selecionadas e duplicação de IDs. Cada perfil mantém os limites do núcleo. Dados inválidos ou de versão desconhecida são preservados sem sobrescrita automática; a visita usa padrões em memória e exibe o aviso. Migração/importação de dados desconhecidos não faz parte desta etapa.
 

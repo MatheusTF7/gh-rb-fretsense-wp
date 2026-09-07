@@ -24,7 +24,7 @@
           </div>
           <div class="practice-fields">
             <q-select v-model="profileId" :options="profileOptions" emit-value map-options :label="t('play.profile')" :disable="starting" />
-            <q-select v-if="profile.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions" emit-value map-options clearable :label="t('play.connection')" :disable="starting" />
+            <q-select v-if="profile.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('play.connection')" :disable="starting" />
             <q-select v-model="patternId" :options="patternOptions" emit-value map-options :label="t('play.pattern')" :disable="starting" />
             <q-select v-model="articulation" :options="articulationOptions" emit-value map-options :label="t('play.articulation')" :disable="starting || patternId === 'repeated-strum'" />
             <q-select v-model="chordSize" :options="chordOptions" emit-value map-options :label="t('play.chordSize')" :disable="starting || patternId === 'ascending-descending'" />

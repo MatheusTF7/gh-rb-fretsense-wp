@@ -5,7 +5,7 @@
     <section class="surface-card section-spacing">
       <div class="device-fields">
         <q-select :model-value="savedDraftId" :options="profileOptions" emit-value map-options :label="t('input.profile')" :disable="capturing" @update:model-value="selectProfile" />
-        <q-select v-model="connectionId" :options="connectionOptions" emit-value map-options clearable :label="t('input.connection')" :disable="capturing" />
+        <q-select v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('input.connection')" :disable="capturing" />
       </div>
       <p>{{ t('input.discovery') }}</p>
       <p v-if="discoveryError" role="status">{{ t('input.unavailable') }}</p>
@@ -69,8 +69,15 @@ const ui = useInterfaceStore();
 const draft = shallowRef<DeviceProfile>(ui.profiles.find((profile) => profile.id === ui.selectedProfileId) ?? DEFAULT_KEYBOARD);
 const label = ref(draft.value.label);
 const connections = shallowRef<readonly GamepadConnection[]>([]);
-const connectionId = ref<string | null>(null);
-const selectedConnection = computed(() => connections.value.find((connection) => connection.connectionId === connectionId.value));
+const selectedConnection = computed(() => {
+  const selection = ui.selectedGamepad;
+  return selection ? connections.value.find((connection) =>
+    connection.index === selection.index && connection.hardwareId === selection.hardwareId) : undefined;
+});
+const connectionId = computed({
+  get: () => selectedConnection.value?.connectionId ?? null,
+  set: (id: string | null) => ui.selectGamepad(connections.value.find((connection) => connection.connectionId === id) ?? null),
+});
 const profileOptions = computed(() => ui.profiles.map((profile) => ({ value: profile.id, label: profile.label })));
 const savedDraftId = computed(() => ui.profiles.some((profile) => profile.id === draft.value.id) ? draft.value.id : null);
 const connectionOptions = computed(() => connections.value.map((connection) => ({ value: connection.connectionId, label: (connection.index + 1) + ' · ' + connection.hardwareId })));
@@ -97,8 +104,18 @@ function identity(): string {
 
 function refreshDevices() {
   if (document.hidden) return;
-  try { connections.value = discovery?.list() ?? []; discoveryError.value = false; }
+  try {
+    connections.value = discovery?.list() ?? [];
+    discoveryError.value = false;
+    selectOnlyCompatibleConnection();
+  }
   catch { connections.value = []; discoveryError.value = true; }
+}
+
+function selectOnlyCompatibleConnection() {
+  if (draft.value.kind !== 'gamepad' || selectedConnection.value?.hardwareId === draft.value.hardwareId) return;
+  const compatible = connections.value.filter((connection) => connection.hardwareId === draft.value.hardwareId);
+  if (compatible.length === 1) ui.selectGamepad(compatible[0] ?? null);
 }
 
 function stopCapture() {
@@ -111,6 +128,7 @@ function selectProfile(id: string) {
   ui.selectProfile(id);
   draft.value = ui.profiles.find((profile) => profile.id === id) ?? DEFAULT_KEYBOARD;
   label.value = draft.value.label;
+  selectOnlyCompatibleConnection();
   message.value = null;
 }
 

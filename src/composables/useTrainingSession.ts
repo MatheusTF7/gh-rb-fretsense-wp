@@ -39,7 +39,6 @@ export function useTrainingSession() {
   const calibrations = useCalibrationStore();
   const captureArea = ref<HTMLElement | null>(null);
   const profileId = ref(ui.selectedProfileId);
-  const connectionId = ref<string | null>(null);
   const patternId = ref<'ascending-descending' | 'repeated-strum'>('ascending-descending');
   const articulation = ref<Extract<Articulation, 'strum' | 'tap'>>('strum');
   const chordSize = ref<1 | 2 | 3>(1);
@@ -60,7 +59,15 @@ export function useTrainingSession() {
 
   const profile = computed(() => ui.profiles.find((item) => item.id === profileId.value) ?? DEFAULT_KEYBOARD);
   const matchingConnections = computed(() => connections.value.filter((item) => item.hardwareId === profile.value.hardwareId));
-  const selectedConnection = computed(() => matchingConnections.value.find((item) => item.connectionId === connectionId.value));
+  const selectedConnection = computed(() => {
+    const selection = ui.selectedGamepad;
+    return selection ? matchingConnections.value.find((connection) =>
+      connection.index === selection.index && connection.hardwareId === selection.hardwareId) : undefined;
+  });
+  const connectionId = computed({
+    get: () => selectedConnection.value?.connectionId ?? null,
+    set: (id: string | null) => ui.selectGamepad(matchingConnections.value.find((connection) => connection.connectionId === id) ?? null),
+  });
   const availableCalibrations = computed(() => calibrations.records.filter((item) =>
     sameReference(item.deviceProfile, profile.value) && item.context.audioMode === audioMode.value));
   const configurationLocked = computed(() => snapshot.value !== null || starting.value);
@@ -96,6 +103,9 @@ export function useTrainingSession() {
     try {
       connections.value = discovery?.list() ?? [];
       discoveryUnavailable.value = false;
+      if (!selectedConnection.value && matchingConnections.value.length === 1) {
+        ui.selectGamepad(matchingConnections.value[0] ?? null);
+      }
     } catch {
       connections.value = [];
       discoveryUnavailable.value = true;
@@ -350,9 +360,9 @@ export function useTrainingSession() {
   }
 
   watch(profileId, (id) => {
-    connectionId.value = null;
     calibrationId.value = null;
     if (ui.selectedProfileId !== id) ui.selectProfile(id);
+    refreshDevices();
   });
   watch(audioMode, () => { calibrationId.value = null; });
   watch(patternId, (pattern) => {

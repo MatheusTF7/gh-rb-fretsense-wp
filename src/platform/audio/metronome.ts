@@ -82,6 +82,13 @@ export class Metronome {
     }
   }
 
+  /** Confirma a saída com um clique curto depois da ativação explícita. */
+  audition(): void {
+    if (this.disposed || this.context?.state !== 'running') throw new Error('Audio unavailable');
+    const startAtMs = performance.now() + 80;
+    this.start({ bpm: 120, beats: 1, startAtMs, silent: false, onEnd() {} });
+  }
+
   start(run: MetronomeRun): void {
     this.stop();
     if (this.disposed) throw new Error('Disposed metronome');

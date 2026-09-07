@@ -4,7 +4,7 @@ const messages: typeof english = {
   profile: 'Perfil de entrada', connection: 'Conexão de Gamepad', devices: 'Configurar dispositivos',
   audioMode: 'Referência sonora', enabled: 'Com áudio', silent: 'Sem áudio',
   silentNotice: 'Modo sem áudio: referência sonora indisponível. Somente ajustes manuais e prévia visual do pulso estão disponíveis.',
-  enable: 'Preparar áudio', ready: 'Áudio preparado', unavailable: 'Áudio indisponível ou suspenso. Prepare novamente por ação explícita ou escolha o modo sem áudio.',
+  enable: 'Preparar e testar áudio', ready: 'Áudio preparado', unavailable: 'Áudio indisponível ou suspenso. Prepare novamente por ação explícita ou escolha o modo sem áudio.',
   output: 'Descrição da saída (opcional)', outputHelp: 'Por exemplo: fone com fio. A descrição diferencia contextos; não altera a saída do sistema operacional.',
   confirmOutput: 'Confirmo que esta é a saída que estou usando agora.',
   unidentified: 'O navegador não identificou a saída. Confira antes de reutilizar um ajuste salvo.',

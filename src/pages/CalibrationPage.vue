@@ -5,7 +5,7 @@
     <section class="surface-card section-spacing">
       <div class="calibration-fields">
         <q-select :model-value="ui.selectedProfileId" :options="profileOptions" emit-value map-options :label="t('timing.profile')" :disable="busy" @update:model-value="ui.selectProfile" />
-        <q-select v-if="device.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions" emit-value map-options clearable :label="t('timing.connection')" :disable="busy" />
+        <q-select v-if="device.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('timing.connection')" :disable="busy" />
       </div>
       <p v-if="device.kind === 'gamepad'">{{ t(discoveryError ? 'input.unavailable' : 'input.discovery') }}</p>
       <q-btn flat no-caps :to="{ name: 'devices' }" :label="t('timing.devices')" />
@@ -87,8 +87,17 @@ const calibrations = useCalibrationStore();
 const device = computed(() => ui.profiles.find((profile) => profile.id === ui.selectedProfileId) ?? DEFAULT_KEYBOARD);
 const profileOptions = computed(() => ui.profiles.map((profile) => ({ value: profile.id, label: profile.label })));
 const connections = shallowRef<readonly GamepadConnection[]>([]);
-const connectionId = ref<string | null>(null);
-const connectionOptions = computed(() => connections.value.map((connection) => ({ value: connection.connectionId, label: (connection.index + 1) + ' · ' + connection.hardwareId })));
+const matchingConnections = computed(() => connections.value.filter((connection) => connection.hardwareId === device.value.hardwareId));
+const selectedConnection = computed(() => {
+  const selection = ui.selectedGamepad;
+  return selection ? matchingConnections.value.find((connection) =>
+    connection.index === selection.index && connection.hardwareId === selection.hardwareId) : undefined;
+});
+const connectionId = computed({
+  get: () => selectedConnection.value?.connectionId ?? null,
+  set: (id: string | null) => ui.selectGamepad(matchingConnections.value.find((connection) => connection.connectionId === id) ?? null),
+});
+const connectionOptions = computed(() => matchingConnections.value.map((connection) => ({ value: connection.connectionId, label: (connection.index + 1) + ' · ' + connection.hardwareId })));
 const discoveryError = ref(false);
 const audioMode = ref<'enabled' | 'silent'>('enabled');
 const audioOptions = computed(() => [{ label: t('timing.enabled'), value: 'enabled' }, { label: t('timing.silent'), value: 'silent' }]);
@@ -139,7 +148,13 @@ const metronome = new Metronome((reason) => {
 
 function refreshDevices() {
   if (document.hidden) return;
-  try { connections.value = discovery?.list() ?? []; discoveryError.value = false; }
+  try {
+    connections.value = discovery?.list() ?? [];
+    discoveryError.value = false;
+    if (!selectedConnection.value && matchingConnections.value.length === 1) {
+      ui.selectGamepad(matchingConnections.value[0] ?? null);
+    }
+  }
   catch { connections.value = []; discoveryError.value = true; }
 }
 
@@ -169,6 +184,10 @@ async function prepareAudio() {
   outputConfirmed.value = false;
   state.value = 'idle';
   if (!enabled) message.value = 'unavailable';
+  else {
+    try { metronome.audition(); }
+    catch { audioReady.value = false; message.value = 'unavailable'; }
+  }
 }
 
 function manualChange() { estimate.value = null; method.value = 'manual'; savedSampleCount.value = 0; }
@@ -211,11 +230,18 @@ function finishRound() {
   } catch { estimate.value = null; message.value = 'insufficient'; }
 }
 
-function startRound(isGuided: boolean) {
+async function startRound(isGuided: boolean) {
   if (!contextReady.value || (isGuided && audioMode.value === 'silent') || !captureArea.value) return;
   stopRound(); message.value = null; guided.value = isGuided; estimate.value = null; sampleCount.value = 0;
+  state.value = 'starting';
+  const token = operation;
+  if (audioMode.value === 'enabled' && !await metronome.enable()) {
+    audioReady.value = false; outputConfirmed.value = false; interruptRound('unavailable'); return;
+  }
+  if (disposed || token !== operation) return;
+  state.value = 'idle';
   refreshDevices();
-  const connection = connections.value.find((item) => item.connectionId === connectionId.value);
+  const connection = selectedConnection.value;
   if (isGuided && device.value.kind === 'gamepad' && (!connection || connection.hardwareId !== device.value.hardwareId)) { message.value = 'mismatch'; return; }
   if (!validOffset(visualOffset.value)) { message.value = 'range'; return; }
   startAt.value = performance.now() + 300;

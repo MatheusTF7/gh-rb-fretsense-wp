@@ -1,10 +1,15 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { DeviceProfile } from '@/engine/domain';
+import type { GamepadConnection } from '@/platform/input/contracts';
 import { getPreferencesRepository } from '@/platform/preferences/repository';
 
 export type ThemePreference = 'dark' | 'light' | 'system';
+export interface SelectedGamepad {
+  readonly index: number;
+  readonly hardwareId: string;
+}
 
-/** Preferências pequenas persistidas; busca do catálogo continua restrita à visita. */
+/** Preferências persistidas e seleções transitórias compartilhadas durante a visita. */
 export const useInterfaceStore = defineStore('interface', {
   state: () => {
     const repository = getPreferencesRepository();
@@ -14,6 +19,7 @@ export const useInterfaceStore = defineStore('interface', {
       reducedMotion: repository.snapshot.interface.reducedMotion,
       profiles: repository.snapshot.profiles,
       selectedProfileId: repository.snapshot.selectedProfileId,
+      selectedGamepad: null as SelectedGamepad | null,
       storageStatus: repository.status,
       catalogSearch: '',
     };
@@ -40,6 +46,11 @@ export const useInterfaceStore = defineStore('interface', {
       repository.selectProfile(id);
       this.selectedProfileId = repository.snapshot.selectedProfileId;
       this.storageStatus = repository.status;
+    },
+    selectGamepad(connection: GamepadConnection | null) {
+      this.selectedGamepad = connection
+        ? { index: connection.index, hardwareId: connection.hardwareId }
+        : null;
     },
     retryStorage() {
       const repository = getPreferencesRepository();

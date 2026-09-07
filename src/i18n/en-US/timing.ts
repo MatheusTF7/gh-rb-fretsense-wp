@@ -3,7 +3,7 @@ export default {
   profile: 'Input profile', connection: 'Gamepad connection', devices: 'Configure devices',
   audioMode: 'Sound reference', enabled: 'With audio', silent: 'Without audio',
   silentNotice: 'Silent mode: no sound reference. Only manual adjustments and visual pulse preview are available.',
-  enable: 'Prepare audio', ready: 'Audio ready', unavailable: 'Audio is unavailable or suspended. Prepare it again explicitly or choose silent mode.',
+  enable: 'Prepare and test audio', ready: 'Audio ready', unavailable: 'Audio is unavailable or suspended. Prepare it again explicitly or choose silent mode.',
   output: 'Output description (optional)', outputHelp: 'For example: wired headphones. This description distinguishes setups; it does not change the operating system output.',
   confirmOutput: 'I confirm that this is the output I am currently using.',
   unidentified: 'The browser did not identify the output. Check it before reusing a saved adjustment.',
