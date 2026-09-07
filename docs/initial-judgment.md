@@ -1,6 +1,6 @@
 # Julgamento inicial — etapa 06
 
-**Estado:** implementação revisada somente por análise estática manual. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou verificações no navegador. Funcionamento em execução permanece sem confirmação do desenvolvedor.
+**Estado:** implementação concluída e revisada somente por análise estática manual. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou verificações no navegador. Funcionamento em execução permanece sem confirmação do desenvolvedor.
 
 ## Escopo disponível
 
@@ -13,6 +13,8 @@ Os padrões iniciais da etapa 03 continuam delimitando as charts aceitas. Não h
 O julgador recebe tempo ativo **bruto** por `processInput(event)` e `advance(rawTimeMs)`. Cada chamada converte esse tempo uma vez com `judgmentTime`; offset visual não participa. Antes de julgar uma entrada, expira as notas cujo limite tardio seja estritamente anterior ao tempo corrigido. `advance` faz a mesma expiração sem precisar de eventos de entrada.
 
 Um cursor percorre a ordem canônica da chart. A candidata é a primeira nota pendente dentro da janela inclusiva de ±120 ms, sem filtrar previamente por fret, articulação ou direção. Isso preserva a precedência da mais antiga quando janelas se sobrepõem. Cada início é consumido uma vez; o cursor nunca recua. Expiração registra o instante do limite tardio, independentemente de quando o coordenador chamou o motor.
+
+Se uma entrada válida avançar o horizonte para depois do limite final, as notas vencidas são resolvidas primeiro e a tentativa é encerrada sem julgar essa ação como `extra-strum` nem guardá-la como entrada da tentativa. Assim, entregar essa ação antes de `advance()` ou avançar o relógio primeiro não muda as métricas, a disponibilidade dos registros ou a elegibilidade na borda de encerramento. Depois de completo, o julgador não aceita novas entradas e avanços adicionais preservam o relatório final.
 
 Entradas precisam ter tempo não regressivo, sequência crescente desde zero, máscaras coerentes e origem correspondente ao dispositivo/conexão. Empates de tempo seguem a sequência recebida; não há ordenação posterior ou agrupamento de ações. Entradas anteriores ao horizonte já entregue são rejeitadas antes de alterar o julgamento. O adaptador da plataforma continua responsável por escolher um timestamp utilizável ou cair no instante de observação.
 
@@ -42,6 +44,7 @@ Tap exige pressionamento/liberação real e estado final exato. Manter um fret n
 - Média com sinal, média absoluta e desvio padrão populacional dos erros de hits, com número de amostras. A agregação é incremental, na ordem das entradas; o desvio usa a atualização de Welford e proteção contra resíduos numéricos negativos.
 - Articulação `passed / (passed + failed)` nos hits. Técnica falha não altera o acerto nem zera combo.
 - Direção exigida por nota: compara direções conhecidas, preserva `unknown` como não avaliada e não desloca as direções planejadas após erros. Uma lacuna em meta obrigatória impede declarar dados técnicos completos.
+- Quando a chart exige direção e o snapshot declara strum não direcional, a métrica nasce como `unsupported-capability`; não é necessário esperar um hit para reconhecer uma capacidade já ausente.
 - Sustains como `not-applicable`, pois charts com cauda são rejeitadas antes da tentativa julgada.
 
 Denominador zero produz `unavailable`, não 0% ou 100%. Uma amostra permite média e desvio populacional zero, sem inferir consistência. Metas e promoção continuam separadas das métricas. Inicialmente, antes da primeira entrada/avanço, o relatório tem horizonte sentinela de −1.000 ms e todas as notas não julgadas; a sessão só publica avaliação ao processar tempo de execução.
@@ -52,7 +55,7 @@ O trabalho de associação é constante por entrada, além das notas que expiram
 
 Após `prepare`, ainda em `ready`, o coordenador chama `session.enableInitialJudgment()`. A ativação é idempotente e valida o escopo antes da contagem. Sem essa chamada, a porta preexistente de relatórios externos continua disponível; com ela, o julgador interno é o único produtor e `reportEvaluation` externo é rejeitado para impedir duas fontes de resultados.
 
-`recordInput` registra a entrada bruta e a encaminha uma vez ao julgador. `advance` entrega o horizonte ativo e atualiza o relatório. O coordenador continua entregando entradas disponíveis antes de fechar o horizonte; não deve reaplicar offsets ou chamar outro julgador para a mesma tentativa. `getEvaluation()` expõe o relatório atual congelado ou `null` antes de qualquer avaliação; `getJudgments()` expõe os registros. `getView().result` e `takeResult()` conservam o contrato existente.
+`recordInput` valida e encaminha a entrada uma vez ao julgador, registrando no buffer as ações que pertencem à tentativa. Tanto `recordInput` quanto `advance` podem fechar o horizonte e concluir a tentativa; isso evita depender de outro ciclo da interface quando a entrada recebida já está depois da borda final. O coordenador continua entregando entradas disponíveis antes de fechar o horizonte; não deve reaplicar offsets ou chamar outro julgador para a mesma tentativa. `getEvaluation()` expõe o relatório atual congelado ou `null` antes de qualquer avaliação; `getJudgments()` expõe os registros. `getView().result` e `takeResult()` conservam o contrato existente.
 
 `advance` completa automaticamente uma tentativa julgada quando o tempo corrigido ultrapassa a extensão/janela final, todos os inícios estão resolvidos e não há caudas. Um avanço tardio ainda processa os prazos em ordem; com julgamento completo, conclui antes de aplicar o timeout legado de espera por relatório. Sem julgador interno, o timeout de cinco segundos permanece.
 

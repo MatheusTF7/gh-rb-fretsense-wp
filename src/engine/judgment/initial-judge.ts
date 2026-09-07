@@ -44,7 +44,7 @@ export class InitialJudge {
   private articulationPassed = 0;
   private directionPassed = 0;
   private directionSamples = 0;
-  private directionUnavailable = false;
+  private directionUnavailable: boolean;
 
   constructor(snapshot: SessionSnapshot) {
     readChoice(snapshot.schemaVersion, [1], 'snapshot.schemaVersion');
@@ -58,6 +58,7 @@ export class InitialJudge {
     });
     this.endTimeMs = getChartEndTime(this.snapshot.chart, this.snapshot.rules);
     this.directionApplicable = this.notes.some(({ note }) => note.expectedStrumDirection !== null);
+    this.directionUnavailable = this.directionApplicable && this.snapshot.device.capabilities.strum !== 'directional';
     this.maximumRawMs = Math.max(0, this.endTimeMs + this.snapshot.calibration.judgmentOffsetMs) + limits.resultGraceMs;
   }
 
@@ -72,6 +73,7 @@ export class InitialJudge {
 
   advance(rawTimeMs: number): void {
     readNumber(rawTimeMs, 'judge.clock', this.rawTimeMs, this.maximumRawMs);
+    if (this.complete) return;
     this.expire(judgmentTime(rawTimeMs, this.snapshot.calibration));
     this.rawTimeMs = rawTimeMs;
   }
@@ -79,6 +81,7 @@ export class InitialJudge {
   processInput(event: NormalizedInputEvent): void {
     // Valida toda a entrada antes de alterar prazos, combo ou registros.
     readNumber(event.sessionTimeMs, 'judge.input.time', this.rawTimeMs, this.maximumRawMs);
+    requireCondition(!this.complete, 'judge.state', 'The judgment is already complete.', 'invalid-transition');
     readInteger(event.sequence, 'judge.input.sequence', 0, Number.MAX_SAFE_INTEGER);
     requireCondition(this.lastSequence < 0 ? event.sequence === 0 : event.sequence > this.lastSequence,
       'judge.input.sequence', 'Input sequence must increase from zero.');
@@ -97,11 +100,14 @@ export class InitialJudge {
       'judge.input.source', 'Input belongs to another device.');
     readString(event.source.connectionId, 'judge.input.connection');
     requireCondition(this.connectionId === null || this.connectionId === event.source.connectionId, 'judge.input.connection', 'Pause before changing connections.');
-    requireCondition(this.inputCount < limits.maximumInputEvents, 'judge.inputs', 'Input capacity reached.', 'resource-limit');
 
     const time = judgmentTime(event.sessionTimeMs, this.snapshot.calibration);
     this.expire(time);
     this.rawTimeMs = event.sessionTimeMs;
+    // O horizonte fecha antes da ação: uma entrada posterior ao fim não pode
+    // virar strum extra apenas porque foi entregue antes do próximo advance().
+    if (this.complete) return;
+    requireCondition(this.inputCount < limits.maximumInputEvents, 'judge.inputs', 'Input capacity reached.', 'resource-limit');
     this.lastSequence = event.sequence;
     this.inputCount++;
     this.connectionId = event.source.connectionId;

@@ -329,7 +329,7 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 #### Registro da etapa 06 — 2026-09-07
 
-- **Estado:** revisada estaticamente.
+- **Estado:** implementação concluída e revisada estaticamente.
 - **Tarefas entregues:** julgador determinístico de strum/tap e acordes de dois/três frets, expiração por relógio, evidência de strum ausente, detalhes de frets incorretos, strums extras separados, combo, precisão e timing básico, com registros imutáveis e encerramento após a janela final.
 - **Arquivos relevantes:** `src/engine/judgment/{initial-judge,index}.ts`, `src/engine/session/training-session.ts`, README e documentação de integrações. Contratos de uso em [julgamento inicial](./initial-judgment.md).
 - **Decisões musicais:** perfil `fretsense-v1@1.0.0` preservado; candidata mais antiga na janela inclusiva de ±120 ms, sem filtro prévio por fret/articulação. Strum tem prioridade no evento e consome no máximo um início. Acorde não pode ser completado depois do strum (`formationGraceMs = 0`). Tap repetido exige liberação real do alvo e novo pressionamento; strum em tap pode acertar com falha técnica.
@@ -340,6 +340,7 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 - **Limitações e pendências:** implementação no núcleo; treino/resultado na interface dependem da etapa 07. HOPO e caudas permanecem na etapa 08. Diagnóstico detalhado, histórico e progressão permanecem nas etapas 11–14. Não houve confirmação prática de funcionamento ou desempenho.
 - **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
 - **Próxima etapa liberada:** etapa 07, highway e primeiro treino jogável.
+- **Revisão de conclusão — 2026-09-07:** o WIP foi auditado e corrigido para que uma entrada posterior à borda final apenas feche o horizonte, sem criar `extra-strum`, registro ou elegibilidade dependentes da ordem de atualização; `recordInput` agora conclui a sessão nesse mesmo fluxo. A ausência conhecida de direção também é reportada como `unsupported-capability` desde a primeira avaliação. Revisão exclusivamente estática e manual, ainda sem confirmação em execução.
 
 ### Etapa 07 — Integrar highway e primeiro treino jogável
 

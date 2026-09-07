@@ -187,50 +187,58 @@ export class TrainingSession {
       this.advance();
       return;
     }
-    readInteger(event.sequence, 'input.sequence', 0, Number.MAX_SAFE_INTEGER);
-    requireCondition(this.lastInputSequence < 0 ? event.sequence === 0 : event.sequence > this.lastInputSequence,
+    const sequence = readInteger(event.sequence, 'input.sequence', 0, Number.MAX_SAFE_INTEGER);
+    requireCondition(this.lastInputSequence < 0 ? sequence === 0 : sequence > this.lastInputSequence,
       'input.sequence', 'Input sequence must increase from zero.');
-    readNumber(event.sessionTimeMs, 'input.sessionTimeMs', Math.max(this.activeTimeMs, this.lastInputTimeMs), observedTime);
-    readChoice(event.timeSource, ['device', 'observation'], 'input.timeSource');
+    const sessionTimeMs = readNumber(event.sessionTimeMs, 'input.sessionTimeMs', Math.max(this.activeTimeMs, this.lastInputTimeMs), observedTime);
+    const timeSource = readChoice(event.timeSource, ['device', 'observation'], 'input.timeSource');
     const active = readInteger(event.activeFrets, 'input.activeFrets', 0, 31);
-    readInteger(event.pressedFrets, 'input.pressedFrets', 0, 31);
-    readInteger(event.releasedFrets, 'input.releasedFrets', 0, 31);
-    requireCondition(event.pressedFrets === (active & ~this.activeFrets & 31)
-      && event.releasedFrets === (this.activeFrets & ~active & 31), 'input.frets', 'Fret transitions do not match the previous state.');
-    if (event.strum !== null) {
-      readChoice(event.strum, ['up', 'down', 'unknown'], 'input.strum');
+    const pressedFrets = readInteger(event.pressedFrets, 'input.pressedFrets', 0, 31) as FretMask;
+    const releasedFrets = readInteger(event.releasedFrets, 'input.releasedFrets', 0, 31) as FretMask;
+    requireCondition(pressedFrets === (active & ~this.activeFrets & 31)
+      && releasedFrets === (this.activeFrets & ~active & 31), 'input.frets', 'Fret transitions do not match the previous state.');
+    const strum = event.strum === null ? null : readChoice(event.strum, ['up', 'down', 'unknown'], 'input.strum');
+    if (strum !== null) {
       requireCondition(snapshot.device.capabilities.strum !== 'unavailable', 'input.strum', 'Device has no strum capability.');
-      requireCondition(snapshot.device.capabilities.strum === 'directional' || event.strum === 'unknown', 'input.strum', 'Direction is not observable on this device.');
+      requireCondition(snapshot.device.capabilities.strum === 'directional' || strum === 'unknown', 'input.strum', 'Direction is not observable on this device.');
     }
     requireCondition(event.source.kind === snapshot.device.kind && event.source.deviceProfileId === snapshot.device.id,
       'input.source', 'Input belongs to another device.');
-    readString(event.source.connectionId, 'input.source.connectionId');
-    requireCondition(this.connectionId === null || this.connectionId === event.source.connectionId,
+    const connectionId = readString(event.source.connectionId, 'input.source.connectionId');
+    requireCondition(this.connectionId === null || this.connectionId === connectionId,
       'input.source.connectionId', 'Connection changes require an interruption.');
-    if (this.inputs.size === this.inputs.capacity) {
+    const closesJudgment = this.judge !== null
+      && judgmentTime(sessionTimeMs, snapshot.calibration) > this.endTimeMs;
+    if (this.inputs.size === this.inputs.capacity && !closesJudgment) {
       this.inputOverflow = true;
       this.advanceTime(false);
       this.finish({ state: 'aborted', reason: 'resource-limit' });
       return;
     }
-    // Copia apenas o contrato conhecido, mantendo o tamanho por evento limitado.
-    this.inputs.append({
-      sequence: event.sequence, sessionTimeMs: event.sessionTimeMs, timeSource: event.timeSource,
-      activeFrets: event.activeFrets, pressedFrets: event.pressedFrets, releasedFrets: event.releasedFrets,
-      strum: event.strum,
-      source: { kind: snapshot.device.kind, deviceProfileId: snapshot.device.id, connectionId: event.source.connectionId },
-    });
-    // Uma interrupção posterior nunca pode congelar antes de uma entrada aceita.
-    this.activeTimeMs = event.sessionTimeMs;
-    this.activeFrets = active as FretMask;
-    this.connectionId = event.source.connectionId;
-    this.lastInputSequence = event.sequence;
-    this.lastInputTimeMs = event.sessionTimeMs;
-    this.recordingStarted = true;
+    // Copia apenas o contrato conhecido antes de entregá-lo aos dois consumidores.
+    const acceptedEvent: NormalizedInputEvent = {
+      sequence, sessionTimeMs, timeSource, activeFrets: active as FretMask, pressedFrets, releasedFrets, strum,
+      source: { kind: snapshot.device.kind, deviceProfileId: snapshot.device.id, connectionId },
+    };
     if (this.judge) {
-      this.judge.processInput(event);
+      this.judge.processInput(acceptedEvent);
       this.evaluation = this.judge.getEvaluation();
+      if (this.judge.complete) {
+        // A ação está fora da tentativa: ela fecha o horizonte, mas não entra
+        // no buffer nem altera a disponibilidade dos dados registrados.
+        this.activeTimeMs = sessionTimeMs;
+        this.complete();
+        return;
+      }
     }
+    this.inputs.append(acceptedEvent);
+    // Uma interrupção posterior nunca pode congelar antes de uma entrada aceita.
+    this.activeTimeMs = sessionTimeMs;
+    this.activeFrets = active as FretMask;
+    this.connectionId = connectionId;
+    this.lastInputSequence = sequence;
+    this.lastInputTimeMs = sessionTimeMs;
+    this.recordingStarted = true;
   }
 
   /** Porta para outro produtor quando o julgador inicial não foi ativado. */
