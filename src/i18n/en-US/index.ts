@@ -1,4 +1,7 @@
+import input from './input';
+
 export default {
+  input,
   app: {
     tagline: 'Five-fret practice',
     workspace: 'Your practice space',
@@ -114,16 +117,16 @@ export default {
     eyebrow: 'Your input',
     title: 'Devices',
     description: 'The same five lanes, with different ways to play.',
-    notice: 'Device detection and control mapping are not available yet.',
+    notice: 'Select a device, map its actions and inspect the received inputs.',
     keyboardTitle: 'Keyboard',
     keyboardDescription:
-      'Planned support for remappable frets and up/down strums. Simultaneous key detection depends on your keyboard.',
+      'Remappable frets and up/down strums. Simultaneous key detection depends on your keyboard.',
     guitarTitle: 'Guitar controller',
     guitarDescription:
-      'Planned support for guitars recognized as gamepads, with a mapping suited to each device.',
+      'Map guitars recognized as gamepads using the controls received by the browser.',
     gamepadTitle: 'Conventional controller',
     gamepadDescription:
-      'Planned support for mapping buttons and axes. Strum direction will only be evaluated when it can be detected.',
+      'Map buttons and axes. Strum direction depends on the distinct actions configured.',
     calibrationTitle: 'Timing is part of the setup',
     calibrationDescription:
       'Calibration will help align what you hear, what you see and when your input is received.',
@@ -162,7 +165,7 @@ export default {
     eyebrow: 'Your space',
     title: 'Settings',
     description: 'Adjust the interface to make practice feel comfortable.',
-    notice: 'These choices last for this visit. Reloading restores the defaults.',
+    notice: 'Preferences are saved in this browser when storage is available.',
     language: 'Language',
     languageDescription: 'Applies to navigation and interface messages.',
     appearance: 'Appearance',

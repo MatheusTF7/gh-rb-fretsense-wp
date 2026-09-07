@@ -1,6 +1,8 @@
 import type enUS from '../en-US';
+import input from './input';
 
 const messages: typeof enUS = {
+  input,
   app: {
     tagline: 'Treino de cinco frets',
     workspace: 'Seu espaço de prática',
@@ -116,16 +118,16 @@ const messages: typeof enUS = {
     eyebrow: 'Sua entrada',
     title: 'Dispositivos',
     description: 'As mesmas cinco pistas, com diferentes formas de jogar.',
-    notice: 'A detecção de dispositivos e o mapeamento de controles ainda não estão disponíveis.',
+    notice: 'Selecione um dispositivo, mapeie suas ações e observe as entradas recebidas.',
     keyboardTitle: 'Teclado',
     keyboardDescription:
-      'Suporte previsto para frets e strums remapeáveis. A detecção de teclas simultâneas depende do seu teclado.',
+      'Frets e strums remapeáveis. A detecção de teclas simultâneas depende do seu teclado.',
     guitarTitle: 'Guitarra',
     guitarDescription:
-      'Suporte previsto para guitarras reconhecidas como gamepads, com mapeamento adequado a cada dispositivo.',
+      'Mapeamento de guitarras reconhecidas como gamepads; configure os controles recebidos pelo navegador.',
     gamepadTitle: 'Controle convencional',
     gamepadDescription:
-      'Suporte previsto para mapear botões e eixos. A direção do strum só será avaliada quando puder ser detectada.',
+      'Mapeie botões e eixos. A direção do strum depende das ações distintas configuradas.',
     calibrationTitle: 'O timing faz parte da preparação',
     calibrationDescription:
       'A calibração ajudará a alinhar o que você ouve, o que vê e o momento em que sua entrada é recebida.',
@@ -164,7 +166,7 @@ const messages: typeof enUS = {
     eyebrow: 'Seu espaço',
     title: 'Configurações',
     description: 'Ajuste a interface para tornar a prática confortável.',
-    notice: 'As escolhas são mantidas durante esta visita. Ao recarregar, o padrão é restaurado.',
+    notice: 'As preferências são salvas neste navegador quando o armazenamento está disponível.',
     language: 'Idioma',
     languageDescription: 'Aplicado à navegação e às mensagens da interface.',
     appearance: 'Aparência',

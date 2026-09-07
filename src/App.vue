@@ -16,6 +16,8 @@ const route = useRoute();
 const quasar = useQuasar();
 const { locale, t } = useI18n({ useScope: 'global' });
 
+watch(() => [ui.locale, ui.theme, ui.reducedMotion], () => ui.persistInterface());
+
 watch(
   () => ui.locale,
   (value) => {

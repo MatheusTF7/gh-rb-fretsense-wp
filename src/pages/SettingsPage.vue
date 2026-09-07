@@ -1,7 +1,7 @@
 <template>
   <PageFrame>
     <PageHeading :eyebrow="t('settings.eyebrow')" :title="t('settings.title')" :description="t('settings.description')" />
-    <FeedbackBanner :message="t('settings.notice')" />
+    <StorageNotice />
     <div class="settings-grid section-spacing">
       <div class="settings-controls">
         <fieldset class="surface-card settings-group" aria-describedby="language-help">
@@ -36,7 +36,7 @@ import { useI18n } from 'vue-i18n';
 import { useInterfaceStore } from '@/stores/interface';
 import PageFrame from '@/components/PageFrame.vue';
 import PageHeading from '@/components/PageHeading.vue';
-import FeedbackBanner from '@/components/FeedbackBanner.vue';
+import StorageNotice from '@/components/StorageNotice.vue';
 import FretLegend from '@/components/training/FretLegend.vue';
 
 const { t } = useI18n();

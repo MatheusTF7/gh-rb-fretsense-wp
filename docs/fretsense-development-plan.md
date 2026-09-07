@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–03 revisadas estaticamente, sem confirmação em execução. Etapas 04–20 pendentes.  
+**Status:** etapas 01–04 revisadas estaticamente, sem confirmação em execução. Etapas 05–20 pendentes.  
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). Ainda precisam ser implementados adaptadores de entrada, relógio da plataforma, áudio, julgamento, integração com a highway, catálogo completo, relatórios e persistência. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). Ainda precisam ser implementados relógio da plataforma, áudio, calibração, julgamento, integração com a highway, catálogo completo, relatórios e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -240,21 +240,35 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Criar contrato de adaptador com conexão, disponibilidade, captura, limpeza e descarte.
-- [ ] Implementar teclado com códigos de tecla configuráveis para cinco frets, strum para cima/baixo e pausa.
-- [ ] Ignorar repetição automática de tecla; preservar pressionamentos e liberações reais.
-- [ ] Restringir captura à sessão ou ao assistente de mapeamento; não consumir entradas de formulários fora desse contexto.
-- [ ] Implementar Gamepad com comparação de estados, botões e eixos mapeáveis, limiares e retorno ao neutro para ações de strum.
-- [ ] Permitir selecionar o dispositivo ativo, sem presumir uma ordem universal de botões ou mesclar controles acidentalmente.
-- [ ] Criar assistente de mapeamento e visualização dos frets, acordes e strums detectados.
-- [ ] Salvar perfis e preferências em um repositório pequeno e versionado, inicialmente com `localStorage`, tratando falha de gravação.
-- [ ] Registrar capacidades: direção do strum, frets simultâneos e botões adicionais identificáveis.
-- [ ] Pausar e limpar entradas em perda de foco, dispositivo desconectado ou troca de dispositivo; retomar somente por ação do usuário.
-- [ ] Descartar listeners e ciclos de captura ao sair do fluxo; não inferir mão ou dedo usado a partir de frets comuns.
+- [x] Criar contrato de adaptador com conexão, disponibilidade, captura, limpeza e descarte.
+- [x] Implementar teclado com códigos de tecla configuráveis para cinco frets, strum para cima/baixo e pausa.
+- [x] Ignorar repetição automática de tecla; preservar pressionamentos e liberações reais.
+- [x] Restringir captura à sessão ou ao assistente de mapeamento; não consumir entradas de formulários fora desse contexto.
+- [x] Implementar Gamepad com comparação de estados, botões e eixos mapeáveis, limiares e retorno ao neutro para ações de strum.
+- [x] Permitir selecionar o dispositivo ativo, sem presumir uma ordem universal de botões ou mesclar controles acidentalmente.
+- [x] Criar assistente de mapeamento e visualização dos frets, acordes e strums detectados.
+- [x] Salvar perfis e preferências em um repositório pequeno e versionado, inicialmente com `localStorage`, tratando falha de gravação.
+- [x] Registrar capacidades: direção do strum, frets simultâneos e botões adicionais identificáveis.
+- [x] Pausar e limpar entradas em perda de foco, dispositivo desconectado ou troca de dispositivo; retomar somente por ação do usuário.
+- [x] Descartar listeners e ciclos de captura ao sair do fluxo; não inferir mão ou dedo usado a partir de frets comuns.
 
 **Entregáveis:** `src/platform/input`, repositório de preferências, página de dispositivos e componentes de mapeamento.
 
 **Critério de conclusão:** todos os adaptadores alimentam o mesmo contrato; limitações de capacidade ficam explícitas e não viram acertos técnicos presumidos.
+
+#### Registro da etapa 04 — 2026-09-07
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** contrato e captura exclusiva de teclado/Gamepad, validação de mapeamento, descoberta/seleção explícita de conexão, assistente de atribuição, monitor de frets/strums/acordes, capacidades observadas e persistência de perfis/preferências com estados de falha.
+- **Arquivos relevantes:** `src/platform/input`, `src/platform/preferences/repository.ts`, `src/pages/DevicesPage.vue`, `src/components/devices`, `src/components/StorageNotice.vue`, store/interface, aplicação e mensagens `pt-BR`/`en-US`. Uso e fronteiras documentados em [entrada e preferências](./input-and-preferences.md).
+- **Decisões relevantes:** teclado inicial A/S/D/F/G, setas cima/baixo e Escape; Gamepad sem índices universais presumidos, com aprendizado de botões/eixos e limiares iniciais 0,6/0,3. Captura só em área focada, com Tab livre, pausa prioritária, retorno ao neutro e reinício explícito após interrupções. Todos os eventos usam timestamp de observação nesta etapa.
+- **Capacidades:** confirma somente acordes e controles extras realmente recebidos; não deduz máximo de teclas, alternância bem-sucedida, mão ou dedo. Mudanças de mapeamento limpam evidências anteriores; salvar cria nova versão e invalida referências de calibração do perfil editado.
+- **Persistência:** chave `fretsense.preferences.v1`, esquema 1, até 16 perfis e 262.144 unidades de texto. Guarda idioma, tema, redução de efeitos e perfil selecionado; conexão física e busca são transitórias. Falhas mantêm alterações em memória; dados inválidos/incompatíveis são preservados sem sobrescrita automática.
+- **Integração preparada:** `createSessionInput` encaminha eventos, baseline e interrupções à sessão, preservando sequência ao retomar/substituir adaptadores. Exige o relógio ativo da etapa 05 e um coordenador proprietário do descarte; ainda não é acionado pela área jogável.
+- **Revisão realizada:** somente análise estática manual de tipos, imports, transições, limites, callbacks, descarte, componentes, mensagens e tratamento de armazenamento. Consulta às especificações primárias de Gamepad/UI Events; não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou verificações no navegador.
+- **Limitações e pendências:** hardware, visual e comportamento ainda não confirmados em execução; sem WebHID, calibração, áudio ou treino jogável. Limiares são preservados por perfil e recebem os padrões ao remapear. Não há sincronização de preferências entre abas ou migração de esquemas desconhecidos.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 05, relógio, áudio e calibração.
 
 ### Etapa 05 — Implementar relógio, áudio e calibração
 

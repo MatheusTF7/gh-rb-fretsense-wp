@@ -1,7 +1,7 @@
 # Regras de gameplay do Fretsense
 
 **Perfil:** `fretsense-v1` · **Versão:** `1.0.0` · **Registro:** 2026-09-07.  
-**Estado:** especificação, contratos e núcleo inicial de geração/sessão revisados por análise estática manual. Adaptadores e julgamento destas regras permanecem nas etapas 04–08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo já implementado está descrito em [núcleo inicial](./engine-foundation.md), sem confirmação em execução.
+**Estado:** especificação, contratos, núcleo inicial e adaptadores de teclado/Gamepad revisados por análise estática manual. Relógio da plataforma e julgamento destas regras permanecem nas etapas 05–08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo já implementado está descrito em [núcleo inicial](./engine-foundation.md) e [entrada e preferências](./input-and-preferences.md), sem confirmação em execução.
 
 Este é um perfil próprio de treinamento, sem equivalência declarada com versões de Guitar Hero, Rock Band ou outros jogos. Seus números são decisões iniciais do produto, não medições de hardware. A referência em código é [`FRETSENSE_V1_RULE_PROFILE`](../src/engine/domain/rules.ts).
 
@@ -190,6 +190,6 @@ Diagnóstico posterior referencia sessões, notas, entradas e julgamentos, infor
 | [`analysis.ts`](../src/engine/domain/analysis.ts) | Métricas, evidências, diagnóstico e `TrainingRecommendation` |
 | [`index.ts`](../src/engine/domain/index.ts) | Exportações públicas do domínio |
 
-Os contratos usam dados serializáveis, imports locais e propriedades/coleções `readonly`, sem Vue, Quasar, Pinia ou APIs do navegador. Os aliases de unidades continuam sendo números; `readonly` não valida dados nem congela objetos em execução. A etapa 03 acrescentou validação nas fronteiras e captura de cópias congeladas, além de geração, conversões musicais e ciclo da sessão. Adaptadores, relógio da plataforma e julgador permanecem nas etapas 04–08. Nenhuma funcionalidade deve aparecer como operacional só por possuir um tipo.
+Os contratos usam dados serializáveis, imports locais e propriedades/coleções `readonly`, sem Vue, Quasar, Pinia ou APIs do navegador. Os aliases de unidades continuam sendo números; `readonly` não valida dados nem congela objetos em execução. A etapa 03 acrescentou validação nas fronteiras e captura de cópias congeladas, além de geração, conversões musicais e ciclo da sessão. A etapa 04 implementou adaptadores e mapeamento em `src/platform/input`, separados do núcleo. Relógio da plataforma e julgador permanecem nas etapas 05–08. Nenhuma funcionalidade deve aparecer como operacional só por possuir um tipo.
 
 Revisão desta entrega: **somente análise estática manual** de regras, contratos, imports, tipos e coerência entre documentos. Não foram criados/executados testes nem executados lint, formatação automática, build, typecheck, aplicação, preview ou navegador. Funcionamento em execução permanece sem confirmação do desenvolvedor.

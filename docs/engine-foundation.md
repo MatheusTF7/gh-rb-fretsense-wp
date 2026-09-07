@@ -2,6 +2,8 @@
 
 **Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. Este núcleo não está conectado à interface e ainda não julga notas. As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
 
+Este documento registra a fundação da etapa 03. A etapa 04 acrescentou os adaptadores e o vínculo de entrada descritos em [entrada e preferências](./input-and-preferences.md); a integração jogável continua pendente.
+
 ## Módulos e contratos
 
 | Módulo | Responsabilidade |
