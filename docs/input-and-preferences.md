@@ -53,4 +53,4 @@ Falha de acesso ou gravação mantém alterações em memória e informa que nã
 
 ## Próxima integração
 
-A etapa 05 implementou relógio ativo da plataforma, áudio e calibração. A etapa 06 fornecerá o julgador, e a etapa 07 conectará esses componentes à área jogável. A existência dos adaptadores não confirma latência, combinações suportadas por um teclado específico ou compatibilidade de um modelo de guitarra; essas confirmações dependem do desenvolvedor e do hardware utilizado.
+A etapa 05 implementou relógio ativo da plataforma, áudio e calibração. A etapa 06 acrescentou o [julgador inicial](./initial-judgment.md), ativado por `TrainingSession.enableInitialJudgment()` antes da contagem; com ele, `recordInput` também julga a entrada aceita, sem exigir um segundo encaminhamento pelo adaptador. A etapa 07 conectará esses componentes à área jogável. A existência dos adaptadores não confirma latência, combinações suportadas por um teclado específico ou compatibilidade de um modelo de guitarra; essas confirmações dependem do desenvolvedor e do hardware utilizado.

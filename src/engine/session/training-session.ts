@@ -1,5 +1,5 @@
 import type {
-  FretMask, InterruptionReason, NormalizedInputEvent, ProgressionEligibility,
+  FretMask, InterruptionReason, JudgmentEvent, NormalizedInputEvent, ProgressionEligibility,
   SessionEnding, SessionInterruption, SessionResult, SessionSnapshot, SessionState,
 } from '../domain';
 import { ENGINE_LIMITS as limits } from '../domain/limits';
@@ -7,6 +7,7 @@ import { immutableCopy } from '../domain/immutable';
 import { EngineError, readChoice, readInteger, readIsoDate, readNumber, readString, requireCondition } from '../domain/validation';
 import { getChartEndTime, ticksToMilliseconds, type MonotonicClock } from '../timing/musical-time';
 import { judgmentTime } from '../timing/calibrated-time';
+import { InitialJudge } from '../judgment/initial-judge';
 import { BoundedBuffer } from './bounded-buffer';
 import { createUnjudgedMetrics, parseSessionEvaluation, type SessionEvaluation } from './evaluation';
 import {
@@ -41,6 +42,7 @@ export class TrainingSession {
   private readonly inputs = new BoundedBuffer<NormalizedInputEvent>(limits.maximumInputEvents);
   private readonly interruptions: SessionInterruption[] = [];
   private evaluation: SessionEvaluation | null = null;
+  private judge: InitialJudge | null = null;
   private lastClockMs: number | null = null;
   private runningSinceMs: number | null = null;
   private countdownEndsAtMs: number | null = null;
@@ -68,6 +70,17 @@ export class TrainingSession {
   }
 
   getInputs(): readonly NormalizedInputEvent[] { return this.inputs.snapshot(); }
+  getJudgments(): readonly JudgmentEvent[] { return this.judge?.getEvents() ?? Object.freeze([]); }
+  getEvaluation(): SessionEvaluation | null { return this.evaluation; }
+
+  /** Ativação explícita antes da contagem; rejeita HOPO/caudas ainda não implementados. */
+  enableInitialJudgment(): void {
+    this.requireState('ready');
+    if (this.judge) return;
+    const judge = new InitialJudge(this.requireSnapshot());
+    judge.setInputBaseline(this.activeFrets);
+    this.judge = judge;
+  }
 
   /** Projeta um instante da fonte monotônica sem avançar o horizonte de julgamento. */
   projectActiveTime(monotonicMs: number): number {
@@ -99,6 +112,10 @@ export class TrainingSession {
 
   /** Avança apenas quando chamado pelo coordenador, usando a fonte monotônica injetada. */
   advance(): SessionView {
+    return this.advanceTime(true);
+  }
+
+  private advanceTime(allowCompletion: boolean): SessionView {
     if (this.state !== 'countdown' && this.state !== 'running') return this.getView();
     let now: number;
     try {
@@ -118,6 +135,14 @@ export class TrainingSession {
     }
     if (this.runningSinceMs !== null) {
       this.activeTimeMs = Math.min(this.hardStopMs, this.accumulatedMs + now - this.runningSinceMs);
+      if (this.judge) {
+        this.judge.advance(this.activeTimeMs);
+        this.evaluation = this.judge.getEvaluation();
+        if (allowCompletion && this.judge.complete) {
+          this.complete();
+          return this.getView();
+        }
+      }
       if (this.activeTimeMs >= this.hardStopMs) this.finish({ state: 'aborted', reason: 'evaluation-timeout' });
     }
     return this.getView();
@@ -127,7 +152,7 @@ export class TrainingSession {
     if (this.state === 'paused') return this.getView();
     this.requireState('countdown', 'running');
     readChoice(reason, ['user-pause', 'focus-lost', 'page-hidden', 'device-disconnected', 'audio-suspended', 'input-timing-invalid'], 'session.interruption');
-    this.advance();
+    this.advanceTime(false);
     if (this.result === null) this.enterPause(reason);
     return this.getView();
   }
@@ -142,6 +167,7 @@ export class TrainingSession {
   setInputBaseline(frets: FretMask): void {
     this.requireState('ready', 'countdown', 'paused');
     this.activeFrets = readInteger(frets, 'input.baseline', 0, 31) as FretMask;
+    this.judge?.setInputBaseline(this.activeFrets);
     this.recordingStarted = true;
   }
 
@@ -183,7 +209,7 @@ export class TrainingSession {
       'input.source.connectionId', 'Connection changes require an interruption.');
     if (this.inputs.size === this.inputs.capacity) {
       this.inputOverflow = true;
-      this.advance();
+      this.advanceTime(false);
       this.finish({ state: 'aborted', reason: 'resource-limit' });
       return;
     }
@@ -201,11 +227,16 @@ export class TrainingSession {
     this.lastInputSequence = event.sequence;
     this.lastInputTimeMs = event.sessionTimeMs;
     this.recordingStarted = true;
+    if (this.judge) {
+      this.judge.processInput(event);
+      this.evaluation = this.judge.getEvaluation();
+    }
   }
 
-  /** O produtor deste relatório será o julgador; esta classe só verifica o contrato. */
+  /** Porta para outro produtor quando o julgador inicial não foi ativado. */
   reportEvaluation(value: unknown): void {
     this.requireState('running', 'paused');
+    requireCondition(this.judge === null, 'evaluation', 'The attached judge owns evaluation; external reports are disabled.', 'invalid-transition');
     const snapshot = this.requireSnapshot();
     const evaluation = parseSessionEvaluation(value, snapshot, judgmentTime(this.activeTimeMs, snapshot.calibration));
     requireCondition(evaluation.metrics.hitNotes + evaluation.metrics.extraStrums <= this.inputs.size,
@@ -240,7 +271,7 @@ export class TrainingSession {
     if (this.result !== null) return this.result;
     this.requireState('ready', 'countdown', 'running', 'paused');
     readChoice(reason, ['user-exit', 'restart', 'context-changed', 'unrecoverable-error', 'resource-limit', 'evaluation-timeout'], 'session.abortReason');
-    this.advance();
+    this.advanceTime(false);
     if (this.result !== null) return this.result;
     if (evaluation !== undefined) this.reportEvaluation(evaluation);
     return this.finish({ state: 'aborted', reason });
@@ -271,6 +302,7 @@ export class TrainingSession {
       : varySessionSnapshot(previous, identity, seed);
     const next = new TrainingSession(this.services);
     next.installSnapshot(snapshot);
+    if (this.judge) next.enableInitialJudgment();
     return next;
   }
 
@@ -307,6 +339,7 @@ export class TrainingSession {
     this.countdownRemainingMs = 0;
     this.activeFrets = 0;
     this.connectionId = null;
+    this.judge?.pause();
     this.state = 'paused';
   }
 

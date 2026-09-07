@@ -1,7 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import type { MessageLanguages } from '@/i18n';
 import type { DeviceProfile } from '@/engine/domain';
-import { getPreferencesRepository, type StorageStatus } from '@/platform/preferences/repository';
+import { getPreferencesRepository } from '@/platform/preferences/repository';
 
 export type ThemePreference = 'dark' | 'light' | 'system';
 
@@ -10,19 +9,23 @@ export const useInterfaceStore = defineStore('interface', {
   state: () => {
     const repository = getPreferencesRepository();
     return {
-      locale: repository.snapshot.interface.locale as MessageLanguages,
-      theme: repository.snapshot.interface.theme as ThemePreference,
+      locale: repository.snapshot.interface.locale,
+      theme: repository.snapshot.interface.theme,
       reducedMotion: repository.snapshot.interface.reducedMotion,
-      profiles: repository.snapshot.profiles as readonly DeviceProfile[],
+      profiles: repository.snapshot.profiles,
       selectedProfileId: repository.snapshot.selectedProfileId,
-      storageStatus: repository.status as StorageStatus,
+      storageStatus: repository.status,
       catalogSearch: '',
     };
   },
   actions: {
     persistInterface() {
       const repository = getPreferencesRepository();
-      repository.saveInterface({ locale: this.locale, theme: this.theme, reducedMotion: this.reducedMotion });
+      repository.saveInterface({
+        locale: this.locale,
+        theme: this.theme,
+        reducedMotion: this.reducedMotion,
+      });
       this.storageStatus = repository.status;
     },
     saveProfile(profile: DeviceProfile) {

@@ -39,7 +39,7 @@ tempo julgado = tempo ativo bruto − judgmentOffsetMs
 tempo visual = tempo ativo bruto − visualOffsetMs
 ```
 
-`judgmentTime` pertence à fronteira do julgador: uma aplicação por entrada e por avanço do horizonte. A sessão usa a mesma transformação para validar relatórios e encerrar a janela final. `visualTime` é exclusivo do desenho, já usado pela prévia da calibração. Os adaptadores continuam entregando tempo bruto. O julgador da etapa 06 deverá consumir essa mesma convenção, sem reaplicar a correção em eventos já convertidos.
+`judgmentTime` pertence à fronteira do julgador: uma aplicação por entrada e por avanço do horizonte. A sessão usa a mesma transformação para validar relatórios e encerrar a janela final. `visualTime` é exclusivo do desenho, já usado pela prévia da calibração. Os adaptadores continuam entregando tempo bruto. O [julgador inicial da etapa 06](./initial-judgment.md) já consome essa convenção, sem reaplicar a correção em eventos convertidos.
 
 ## Áudio e ciclo de vida
 
@@ -53,7 +53,7 @@ O contexto de áudio é criado/retomado por gesto explícito. A ativação tem e
 
 Ao retomar entre beats, a contagem permanece regular e a continuação aguarda a fração restante até o próximo beat da chart, preservando seu acento. O coordenador precisa iniciar o agendamento durante a contagem; se não houver mais pulso de preparação futuro, o vínculo pausa e exige novo início explícito.
 
-Mudanças conhecidas de saída ou taxa de amostragem incompatível com o snapshot exigem outra tentativa. Suspensão ou atraso de agendamento pausa a sessão e notifica o coordenador para limpar a captura. O coordenador deve encaminhar interrupções dos adaptadores para `synchronize` no mesmo fluxo e descartar o vínculo ao concluir/sair. A integração com highway e julgamento permanece nas etapas 06–07.
+Mudanças conhecidas de saída ou taxa de amostragem incompatível com o snapshot exigem outra tentativa. Suspensão ou atraso de agendamento pausa a sessão e notifica o coordenador para limpar a captura. O coordenador deve encaminhar interrupções dos adaptadores para `synchronize` no mesmo fluxo e descartar o vínculo ao concluir/sair. O julgador inicial já está disponível no núcleo; a integração com áudio e highway na área jogável permanece na etapa 07.
 
 Na página de calibração, listeners de foco, visibilidade, conexão e mudanças de dispositivos interrompem a rodada. Saída não identificável tem ID `null` e aviso explícito; a confirmação atual não é persistida. O navegador pode não reportar todas as mudanças de saída, por isso a descrição e a conferência pelo usuário continuam relevantes. O frame da prévia, o intervalo de descoberta, a cauda visual, a captura e o contexto são descartados ao sair da rota.
 
@@ -69,4 +69,4 @@ Falhas de gravação mantêm dados em memória e oferecem nova tentativa de salv
 
 ## Limitações da entrega
 
-O código implementa calibração e referências temporais; não demonstra precisão medida nem equivalência de latência entre navegadores/dispositivos. A estimativa guiada é limitada à janela de ±250 ms para evitar ambiguidade entre pulsos; valores maiores podem ser configurados manualmente dentro do limite de ±1.000 ms. A integração real do julgador e da highway ainda será implementada. Toda revisão feita pelo agente foi estática e manual, conforme `AGENTS.md`.
+O código implementa calibração e referências temporais; não demonstra precisão medida nem equivalência de latência entre navegadores/dispositivos. A estimativa guiada é limitada à janela de ±250 ms para evitar ambiguidade entre pulsos; valores maiores podem ser configurados manualmente dentro do limite de ±1.000 ms. A integração jogável do julgador e da highway ainda será implementada. Toda revisão feita pelo agente foi estática e manual, conforme `AGENTS.md`.

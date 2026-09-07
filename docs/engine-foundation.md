@@ -1,6 +1,6 @@
 # Núcleo inicial do Fretsense — etapa 03
 
-**Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. Este núcleo não está conectado à interface e ainda não julga notas. As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
+**Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. Este núcleo ainda não está conectado à interface jogável. A etapa 06 acrescentou julgamento opcional de strum/tap/acordes sem caudas. As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
 
 Este documento registra a fundação da etapa 03. A etapa 04 acrescentou os adaptadores e o vínculo de entrada descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou a projeção temporal da sessão, normalização de timestamps, áudio e calibração descritos em [relógio e calibração](./timing-and-calibration.md); a integração jogável continua pendente.
 
@@ -12,8 +12,9 @@ Este documento registra a fundação da etapa 03. A etapa 04 acrescentou os adap
 | `src/engine/generation` | `generateDrill`, configuração inicial e geração determinística |
 | `src/engine/timing` | Conversões musicais, limite final da chart e porta `MonotonicClock` |
 | `src/engine/session` | Snapshots, repetição/variação, buffer limitado e `TrainingSession` |
+| `src/engine/judgment` | Julgamento inicial, eventos imutáveis e agregação básica da etapa 06 |
 
-Os módulos usam TypeScript e imports locais. Relógio, identidade da tentativa e data civil são dependências fornecidas pelo coordenador; não há acesso a Vue, Pinia, dispositivos, armazenamento, áudio ou timers globais. As interfaces da etapa 01 continuam sendo os contratos compartilhados. O julgador e os adaptadores serão implementados nas próximas etapas.
+Os módulos usam TypeScript e imports locais. Relógio, identidade da tentativa e data civil são dependências fornecidas pelo coordenador; não há acesso a Vue, Pinia, dispositivos, armazenamento, áudio ou timers globais. As interfaces da etapa 01 continuam sendo os contratos compartilhados. Os adaptadores foram acrescentados nas etapas 04–05; o [julgador inicial](./initial-judgment.md), na etapa 06.
 
 `parseDrillConfig(unknown)` valida e copia os campos reconhecidos da configuração. `generateDrill(unknown)` também verifica a geometria e as combinações suportadas pelo gerador antes de alocar notas. `createSessionSnapshot` valida perfis de dispositivo/calibração, suas referências e capacidades conhecidas antes de capturar configuração, chart, regras e contexto completos. Erros usam `EngineError`, com `code`, `path` e mensagem técnica; a interface deverá traduzi-los para o usuário.
 
@@ -64,6 +65,7 @@ Os valores estão centralizados em `ENGINE_LIMITS` e são decisões de implement
 | Operação | Efeito |
 | --- | --- |
 | `prepare` | De `idle` para `ready`, com snapshot válido |
+| `enableInitialJudgment` | Em `ready`, ativa o julgador de strum/tap sem caudas e rejeita escopo ainda não suportado |
 | `start` | De `ready` para `countdown` |
 | `advance` | Atualiza contagem/tempo ativo; ao acabar a contagem passa a `running`, preservando atraso entre chamadas |
 | `pause` | De `countdown`/`running` para `paused`, congela o tempo e limpa o estado transitório de entrada |
@@ -74,19 +76,19 @@ Os valores estão centralizados em `ENGINE_LIMITS` e são decisões de implement
 | `repeat` / `vary(seed)` | A partir de estado terminal, devolve outra instância em `ready` |
 | `takeResult` | Entrega o resultado terminal uma vez; chamadas posteriores retornam `null` |
 
-`getView` permite consultar estado e resultado imutável sem consumi-lo; `getSnapshot` e `getInputs` expõem dados congelados. Uma instância terminal não é reutilizada. Repetir chamadas de encerramento devolve o mesmo resultado e não o emite novamente.
+`getView` permite consultar estado e resultado imutável sem consumi-lo; `getSnapshot`, `getInputs`, `getEvaluation` e `getJudgments` expõem dados congelados. O relatório é `null` até haver avaliação, e os julgamentos ficam vazios sem julgador interno. Uma instância terminal não é reutilizada. Repetir chamadas de encerramento devolve o mesmo resultado e não o emite novamente.
 
 Somente `running` aceita `recordInput`. Na preparação/contagem/pausa, `setInputBaseline` sincroniza frets mantidos sem criar ataques. Sequências começam em zero e crescem mesmo depois de pausas; timestamps podem empatar. Eventos precisam pertencer ao dispositivo capturado e à conexão corrente, respeitar as transições de máscaras e não anteceder o horizonte bruto já processado. Uma troca de conexão exige interrupção. A pausa limpa frets/conexão, preserva o contador de entradas e invalida a elegibilidade para progressão. Uma nova interrupção durante a contagem de retomada continua a interrupção aberta.
 
-O coordenador deve entregar o lote capturado por `recordInput` antes de chamar `advance` para fechar seu horizonte; os adaptadores converterão timestamps para tempo ativo bruto. O julgador processará o mesmo lote e horizonte corrigido, subtraindo `judgmentOffsetMs` uma única vez, e enviará `reportEvaluation`. O offset visual não participa do encerramento ou das métricas. Limpeza de entrada, cancelamento de áudio e suspensão/retomada de sustains precisam ser coordenados pelos adaptadores e pelo julgador nas etapas correspondentes.
+O coordenador deve entregar o lote capturado por `recordInput` antes de chamar `advance` para fechar seu horizonte; os adaptadores convertem timestamps para tempo ativo bruto. Com o julgador inicial ativado, a sessão encaminha entradas/horizontes e recebe a avaliação internamente; `reportEvaluation` externo fica bloqueado para impedir dois produtores. O julgador subtrai `judgmentOffsetMs` uma única vez. O offset visual não participa do encerramento ou das métricas. Limpeza de entrada e cancelamento de áudio continuam sendo responsabilidades da integração; HOPO/sustains permanecem na etapa 08.
 
 Se o relógio recuar ou ficar inválido durante contagem/execução, a sessão pausa com `input-timing-invalid`; uma entrada afetada é rejeitada. Retomar exige uma leitura válida que não anteceda a última leitura aceita. Durante a pausa, `advance` não acumula tempo nem resolve notas.
 
 ## Encerramento e resultado
 
-`SessionEvaluation` é a fronteira com o futuro julgador: contém ID da tentativa, horizonte musical corrigido processado, métricas, quantidade de caudas pendentes/registros e disponibilidade dos dados. A sessão verifica limites, contagens, razões, amostras e avanço dos relatórios. Essa verificação não substitui o julgamento nem comprova que as métricas vieram da execução; o produtor responsável será a etapa 06, ampliado na etapa 08.
+`SessionEvaluation` é a fronteira com o julgador: contém ID da tentativa, horizonte musical corrigido processado, métricas, quantidade de caudas pendentes/registros e disponibilidade dos dados. A porta externa continua verificando limites, contagens, razões, amostras e avanço dos relatórios quando não há julgador interno. A etapa 06 fornece um produtor próprio, ampliado na etapa 08; a validação de um relatório externo por si só não comprova sua origem.
 
-Concluir exige ultrapassar estritamente o maior entre extensão da chart, último início mais a janela tardia e último fim de cauda, com todos os inícios/caudas resolvidos e relatório processado até o horizonte corrigido atual. Sem relatório conclusivo, a tentativa aborta com `evaluation-timeout` ao atingir a tolerância final de cinco segundos ativos, quando `advance` ou captura voltar a ser chamado. O núcleo não agenda tarefas nem encerra por tempo de parede enquanto estiver pausado.
+Concluir exige ultrapassar estritamente o maior entre extensão da chart, último início mais a janela tardia e último fim de cauda, com todos os inícios/caudas resolvidos e relatório processado até o horizonte corrigido atual. Com o julgador inicial ativado, `advance` processa prazos e conclui automaticamente quando essas condições são atendidas, inclusive em um avanço tardio. Sem relatório conclusivo, a tentativa aborta com `evaluation-timeout` ao atingir a tolerância final de cinco segundos ativos, quando `advance` ou captura voltar a ser chamado. O núcleo não agenda tarefas nem encerra por tempo de parede enquanto estiver pausado.
 
 Abandonos preservam o último relatório aceito; notas não resolvidas permanecem não julgadas. Sem relatório, todas as notas ficam não julgadas, as métricas derivadas são indisponíveis e a análise fica `not-performed`. O resultado informa retenção dos registros, inclusive entrada parcial por excesso de buffer. Cancelamento de caudas no abandono deverá ser relatado pelo julgador antes do encerramento. Caudas pendentes ou relatório anterior ao horizonte final impedem declarar registros completos; registros não gravados ou descartados mantêm esses estados.
 

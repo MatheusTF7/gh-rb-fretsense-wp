@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–05 revisadas estaticamente, sem confirmação em execução. Etapas 06–20 pendentes.  
+**Status:** etapas 01–06 revisadas estaticamente, sem confirmação em execução. Etapas 07–20 pendentes.  
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). Ainda precisam ser implementados julgamento, integração com a highway, catálogo completo, relatórios e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento de strum/tap/acordes sem caudas, métricas e encerramento da sessão julgada, descritos em [julgamento inicial](./initial-judgment.md). Ainda precisam ser implementados integração com a highway, HOPO/sustains, catálogo completo, relatórios na interface e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -312,20 +312,34 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Implementar seleção determinística da nota candidata dentro da janela e regras de desempate.
-- [ ] Julgar notas de strum usando a ação de strum e os frets ativos; manter um botão pressionado não produz novas ações.
-- [ ] Julgar tap por transições de frets elegíveis; segurar o mesmo fret não acerta automaticamente todas as notas futuras.
-- [ ] Implementar notas duplas/triplas como um resultado musical único e registrar detalhes de frets ausentes/adicionais.
-- [ ] Definir tolerância de formação de acorde conforme o perfil, limitada pela janela da nota, sem permitir acertos retroativos ilimitados.
-- [ ] Expirar notas pelo relógio mesmo sem eventos de entrada; consumir cada nota uma única vez.
-- [ ] Registrar acerto, antecipação/atraso dentro da janela, omissão, fret incorreto e strum extra/ausente.
-- [ ] Calcular combo, melhor combo e precisão básica com regras para não duplicar penalizações do mesmo fato.
-- [ ] Diferenciar strum extra sem nota associada de erro de uma nota; registrá-lo separadamente no resultado.
-- [ ] Encerrar a tentativa depois da janela final aplicável, preservando dados suficientes para a análise posterior.
+- [x] Implementar seleção determinística da nota candidata dentro da janela e regras de desempate.
+- [x] Julgar notas de strum usando a ação de strum e os frets ativos; manter um botão pressionado não produz novas ações.
+- [x] Julgar tap por transições de frets elegíveis; segurar o mesmo fret não acerta automaticamente todas as notas futuras.
+- [x] Implementar notas duplas/triplas como um resultado musical único e registrar detalhes de frets ausentes/adicionais.
+- [x] Definir tolerância de formação de acorde conforme o perfil, limitada pela janela da nota, sem permitir acertos retroativos ilimitados.
+- [x] Expirar notas pelo relógio mesmo sem eventos de entrada; consumir cada nota uma única vez.
+- [x] Registrar acerto, antecipação/atraso dentro da janela, omissão, fret incorreto e strum extra/ausente.
+- [x] Calcular combo, melhor combo e precisão básica com regras para não duplicar penalizações do mesmo fato.
+- [x] Diferenciar strum extra sem nota associada de erro de uma nota; registrá-lo separadamente no resultado.
+- [x] Encerrar a tentativa depois da janela final aplicável, preservando dados suficientes para a análise posterior.
 
 **Entregáveis:** julgador inicial, eventos de resultado e agregação básica.
 
 **Critério de conclusão:** cada nota alcança um estado final, cada evento tem tratamento definido e os resultados não dependem da taxa de atualização da interface.
+
+#### Registro da etapa 06 — 2026-09-07
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** julgador determinístico de strum/tap e acordes de dois/três frets, expiração por relógio, evidência de strum ausente, detalhes de frets incorretos, strums extras separados, combo, precisão e timing básico, com registros imutáveis e encerramento após a janela final.
+- **Arquivos relevantes:** `src/engine/judgment/{initial-judge,index}.ts`, `src/engine/session/training-session.ts`, README e documentação de integrações. Contratos de uso em [julgamento inicial](./initial-judgment.md).
+- **Decisões musicais:** perfil `fretsense-v1@1.0.0` preservado; candidata mais antiga na janela inclusiva de ±120 ms, sem filtro prévio por fret/articulação. Strum tem prioridade no evento e consome no máximo um início. Acorde não pode ser completado depois do strum (`formationGraceMs = 0`). Tap repetido exige liberação real do alvo e novo pressionamento; strum em tap pode acertar com falha técnica.
+- **Tempo e métricas:** offset aplicado uma vez pelo julgador em entradas/horizontes; imagem independente. Expirações registram a borda tardia, embora só sejam emitidas depois dela. Precisão usa notas resolvidas; timing usa hits com média, erro absoluto e desvio populacional incremental. Ausência de amostras e direção desconhecida não produzem sucesso presumido.
+- **Integração com sessão:** `enableInitialJudgment()` ativa o produtor em `ready`; `recordInput` e `advance` encaminham dados e atualizam o relatório. `advance` conclui automaticamente após a janela final; pausa/abandono não concluem automaticamente por essa chamada e preservam notas futuras não julgadas. Repetição/variação/reinício criam julgador e registros novos. `getEvaluation()` e `getJudgments()` expõem dados imutáveis para o coordenador futuro.
+- **Limites e escopo:** valida snapshot/chart canônicos e rejeita HOPO/sustains antes da contagem julgada. Conserva limites de 4.096 notas, 65.536 entradas e 131.072 julgamentos; não há sobrescrita de registros. Metas por direção já materializadas nas notas são observadas; catálogo e cenários completos continuam nas etapas posteriores.
+- **Revisão realizada:** somente análise estática manual de tipos, imports, máscaras, janelas, ordem, agregação, limites, pausa/retomada, conclusão e referências documentais. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou navegador.
+- **Limitações e pendências:** implementação no núcleo; treino/resultado na interface dependem da etapa 07. HOPO e caudas permanecem na etapa 08. Diagnóstico detalhado, histórico e progressão permanecem nas etapas 11–14. Não houve confirmação prática de funcionamento ou desempenho.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 07, highway e primeiro treino jogável.
 
 ### Etapa 07 — Integrar highway e primeiro treino jogável
 
