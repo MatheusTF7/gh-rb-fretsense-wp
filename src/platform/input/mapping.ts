@@ -36,8 +36,8 @@ export function validateMapping(value: unknown, requirePlayable = false): Device
     ? actions.has('unknown') ? 'undirected' : 'directional' : 'unavailable';
   requireCondition(profile.capabilities.strum === strum, 'capabilities.strum', 'Capability differs from mapping.');
   if (requirePlayable) {
-    requireCondition(['G', 'R', 'Y', 'B', 'O', 'pause'].every((id) => actions.has(id)) && strum !== 'unavailable',
-      'bindings', 'Map five frets, at least one strum and pause.');
+    requireCondition(['G', 'R', 'Y', 'B', 'O', 'pause'].every((id) => actions.has(id)),
+      'bindings', 'Map five frets and pause.');
   }
   return profile;
 }

@@ -45,6 +45,8 @@ export interface DrillConfig {
     | { readonly kind: 'duration'; readonly ticks: MusicalTick };
   /** mixed delega a articulação de cada nota ao padrão versionado. */
   readonly articulation: Articulation | 'mixed';
+  /** Uma nova pressão que completa os frets exatos pode acionar notas de strum. */
+  readonly automaticStrum: boolean;
   readonly chordSize: 1 | 2 | 3;
   readonly sustainTicks: MusicalTick;
   readonly strumDirectionGoal: StrumDirectionGoal;

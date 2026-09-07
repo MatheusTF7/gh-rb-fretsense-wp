@@ -4,9 +4,9 @@
 
 ## Uso da página de calibração
 
-Selecione um perfil de entrada já mapeado. Para Gamepad, escolha explicitamente a conexão correspondente. No modo **Com áudio**, use **Preparar áudio**, confira a saída do sistema e confirme que é a saída atual. Uma descrição opcional, como “fone com fio”, diferencia contextos; esse campo não muda o dispositivo de saída do sistema.
+Selecione um perfil de entrada já mapeado. Para Gamepad, escolha explicitamente a conexão correspondente. No modo **Com áudio**, use **Preparar e testar áudio**, confira a saída do sistema e confirme que é a saída atual. Uma descrição opcional, como “fone com fio”, diferencia contextos; esse campo não muda o dispositivo de saída do sistema.
 
-**Iniciar calibração guiada** prepara 300 ms de antecedência, toca quatro pulsos de preparação e recebe um strum por pulso durante mais 16 pulsos, a 90 BPM. A captura usa o strum mapeado, com ou sem direção, e os mesmos adaptadores de teclado/Gamepad. Frets não influenciam a coleta. A área precisa manter foco; Tab, pausa mapeada, perda de foco, aba oculta, desconexão e interrupções de áudio encerram a rodada e descartam a amostra incompleta. Não há retomada automática nem mistura de amostras entre rodadas.
+**Iniciar calibração guiada** prepara 300 ms de antecedência, toca quatro pulsos de preparação e recebe uma ativação por pulso durante mais 16 pulsos, a 90 BPM. A captura aceita um strum mapeado, com ou sem direção, ou uma nova pressão de fret pelos mesmos adaptadores de teclado/Gamepad; o fret escolhido não altera a estimativa e precisa ser solto antes da próxima amostra. A área precisa manter foco; Tab, pausa mapeada, perda de foco, aba oculta, desconexão e interrupções de áudio encerram a rodada e descartam a amostra incompleta. Não há retomada automática nem mistura de amostras entre rodadas.
 
 A estimativa é **compensação combinada**: diferença entre entrada e referência musical agendada, incluindo resposta da pessoa e atrasos observáveis do conjunto. Ela não mede isoladamente latência de áudio, vídeo ou dispositivo. Pulsos são associados pela posição mais próxima, com janela de ±250 ms; duplicatas e entradas fora da janela não substituem amostras já aceitas.
 

@@ -28,7 +28,7 @@ Este é um perfil próprio de treinamento, sem equivalência declarada com vers�
 | Ordem | `Chart.notes` em ordem crescente de tick; seu índice é a ordem canônica de desempate |
 | Extensão | `Chart.lengthTicks` inclui pausas musicais e caudas; cada início é menor que a extensão e cada fim é menor ou igual a ela |
 
-`DrillConfig` contém técnica, nível, padrão versionado, BPM, subdivisão, frets permitidos, tamanho do padrão, articulação, tamanho de acorde, duração de sustain, metas, semente e referência do perfil. `length` escolhe **repetições ou duração em ticks**; não aceita os dois limites concorrentes. Treino contínuo será uma sequência de tentativas finitas.
+`DrillConfig` contém técnica, nível, padrão versionado, BPM, subdivisão, frets permitidos, tamanho do padrão, articulação, opção de strum automático, tamanho de acorde, duração de sustain, metas, semente e referência do perfil. `length` escolhe **repetições ou duração em ticks**; não aceita os dois limites concorrentes. Treino contínuo será uma sequência de tentativas finitas.
 
 Em uma duração fixa, o gerador só pode incluir notas inteiras que caibam na extensão, incluindo caudas. Não encurta sustains silenciosamente. `articulation: 'mixed'` delega a escolha de cada nota ao padrão versionado. Metas de direção são materializadas em `expectedStrumDirection` por nota de `strum`; nas demais articulações esse campo é `null` neste perfil.
 
@@ -94,7 +94,9 @@ O combo começa em zero, cresce uma vez por início acertado e guarda seu maior 
 
 ### Strum e acordes
 
-`strum` exige uma nova ação de strum e a máscara exata no mesmo evento. Apenas formar ou manter os frets não acerta a nota. Acordes podem ser preparados gradualmente **antes** da palhetada, desde que todos os frets esperados estejam ativos nela. A tolerância para completar frets **depois** do strum é `0 ms`; não há acerto retroativo. Não se exige que todos os botões tenham sido pressionados no mesmo timestamp.
+No modo manual, `strum` exige uma nova ação de strum e a máscara exata no mesmo evento. Apenas formar ou manter os frets não acerta a nota. Acordes podem ser preparados gradualmente **antes** da palhetada, desde que todos os frets esperados estejam ativos nela. A tolerância para completar frets **depois** do strum é `0 ms`; não há acerto retroativo. Não se exige que todos os botões tenham sido pressionados no mesmo timestamp.
+
+Com `automaticStrum` ativo, uma entrada sem strum físico aciona a candidata somente quando possui ao menos um fret recém-pressionado, termina na máscara exata e a nota exige articulação `strum`. Formações parciais ou incorretas permanecem pendentes em vez de gerar miss imediato; chegar à máscara apenas soltando um fret não aciona a nota. Repetir a mesma nota exige soltá-la e pressioná-la novamente. O recurso não transforma notas `tap`, não inventa direção e não altera o tratamento de uma ação física de strum recebida.
 
 ### Tap e notas repetidas
 
@@ -131,7 +133,7 @@ Se o início for acertado em/depois de `E`, ainda dentro de sua janela, conserva
 
 ## 7. Tentativa, interrupção e encerramento
 
-O snapshot captura cópias completas de configuração, chart/semente/gerador, regras, dispositivo/capacidades e calibração. IDs/versões de referências devem coincidir com os objetos capturados; BPM e semente da chart devem coincidir com a configuração. Nem prática nem avaliação alteram essas condições no meio da tentativa. Repetir a mesma chart usa outro ID de sessão; variar troca a semente; modificar dispositivo, mapeamento, regras ou calibração encerra a tentativa como `aborted / context-changed` antes de preparar outra.
+O snapshot captura cópias completas de configuração, incluindo o modo de strum, chart/semente/gerador, regras, dispositivo/capacidades e calibração. IDs/versões de referências devem coincidir com os objetos capturados; BPM e semente da chart devem coincidir com a configuração. Nem prática nem avaliação alteram essas condições no meio da tentativa. Repetir a mesma chart usa outro ID de sessão; variar troca a semente; modificar dispositivo, mapeamento, regras ou calibração encerra a tentativa como `aborted / context-changed` antes de preparar outra.
 
 | Estado | Transições admitidas |
 | --- | --- |

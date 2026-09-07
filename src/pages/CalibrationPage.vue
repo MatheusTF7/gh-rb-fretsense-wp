@@ -261,7 +261,7 @@ async function startRound(isGuided: boolean) {
         } },
         onBaseline() {},
         onEvent(event) {
-          if (event.strum === null || !collector) return;
+          if ((event.strum === null && event.pressedFrets === 0) || !collector) return;
           try { collector.tap(event.sessionTimeMs); sampleCount.value = collector.sampleCount; }
           catch { interruptRound('insufficient'); }
         },

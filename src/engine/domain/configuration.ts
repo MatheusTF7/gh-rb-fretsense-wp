@@ -45,6 +45,8 @@ export function parseDrillConfig(value: unknown): DrillConfig {
       ? { kind: 'repetitions', count: readInteger(length.count, 'config.length.count', 1, limits.maximumRepetitions) }
       : { kind: 'duration', ticks: readInteger(length.ticks, 'config.length.ticks', 1, limits.maximumTicks) },
     articulation: readChoice(config.articulation, ['strum', 'hopo', 'tap', 'mixed'], 'config.articulation'),
+    automaticStrum: config.automaticStrum === undefined
+      ? false : readBoolean(config.automaticStrum, 'config.automaticStrum'),
     chordSize: readChoice(config.chordSize, [1, 2, 3], 'config.chordSize'),
     sustainTicks: readInteger(config.sustainTicks, 'config.sustainTicks', 0, limits.maximumTicks),
     strumDirectionGoal,

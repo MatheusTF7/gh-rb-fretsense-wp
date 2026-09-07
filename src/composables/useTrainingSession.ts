@@ -41,6 +41,7 @@ export function useTrainingSession() {
   const profileId = ref(ui.selectedProfileId);
   const patternId = ref<'ascending-descending' | 'repeated-strum'>('ascending-descending');
   const articulation = ref<Extract<Articulation, 'strum' | 'tap'>>('strum');
+  const automaticStrum = ref(true);
   const chordSize = ref<1 | 2 | 3>(1);
   const bpm = ref<number | string | null>(120);
   const repetitions = ref<number | string | null>(4);
@@ -125,7 +126,7 @@ export function useTrainingSession() {
       bpm: Number(bpm.value), subdivision: 2, allowedFrets: 31,
       patternLength: ascending ? 10 : 4,
       length: { kind: 'repetitions', count: Number(repetitions.value) },
-      articulation: chosenArticulation, chordSize: chosenChordSize,
+      articulation: chosenArticulation, automaticStrum: automaticStrum.value, chordSize: chosenChordSize,
       sustainTicks: 0, strumDirectionGoal: { kind: 'none' },
       goals: {
         minimumAccuracy: 0.9, maximumErrors: 4, consistentAttempts: 3,
@@ -391,7 +392,7 @@ export function useTrainingSession() {
 
   return {
     ui, calibrations, captureArea, profileId, profile, connectionId, matchingConnections,
-    patternId, articulation, chordSize, bpm, repetitions, audioMode, calibrationId,
+    patternId, articulation, automaticStrum, chordSize, bpm, repetitions, audioMode, calibrationId,
     availableCalibrations, discoveryUnavailable, starting, failure, snapshot, view,
     evaluation, judgments, latestJudgment, result, configurationLocked, state, isActive,
     isPaused, isFinished, countdownBeat, resolvedNotes, progress,

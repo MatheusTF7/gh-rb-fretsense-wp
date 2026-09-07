@@ -1,6 +1,6 @@
 import type english from '../en-US/timing';
 const messages: typeof english = {
-  intro: 'Prepare o áudio, confirme a saída e acompanhe o pulso com strums. A estimativa é uma compensação combinada, incluindo sua resposta; não separa latências do hardware.',
+  intro: 'Prepare o áudio, confirme a saída e acompanhe o pulso com strums ou pressões de fret. A estimativa é uma compensação combinada, incluindo sua resposta; não separa latências do hardware.',
   profile: 'Perfil de entrada', connection: 'Conexão de Gamepad', devices: 'Configurar dispositivos',
   audioMode: 'Referência sonora', enabled: 'Com áudio', silent: 'Sem áudio',
   silentNotice: 'Modo sem áudio: referência sonora indisponível. Somente ajustes manuais e prévia visual do pulso estão disponíveis.',
@@ -14,7 +14,7 @@ const messages: typeof english = {
   judgmentHelp: 'Valores positivos compensam entrada tardia: 1030 ms com +30 ms é julgado em 1000 ms. Aplicado uma vez pelo julgador.',
   visualHelp: 'Valores positivos atrasam a imagem. Não alteram entrada, som ou julgamento.',
   guide: 'Iniciar calibração guiada', preview: 'Ouvir/ver metrônomo', stop: 'Parar',
-  capture: 'Área de entrada da calibração', instructions: 'Ouça quatro pulsos de preparação e faça um strum por pulso durante 16 pulsos a 90 BPM, com seu controle mapeado. Tab sai da captura. Solte os controles mantidos antes de iniciar.',
+  capture: 'Área de entrada da calibração', instructions: 'Ouça quatro pulsos de preparação e faça um strum ou pressione um fret por pulso durante 16 pulsos a 90 BPM. Solte o fret entre pulsos. Tab sai da captura. Solte os controles mantidos antes de iniciar.',
   countIn: 'Preparação: {count}', collecting: 'Acompanhe o pulso · {count}/16 amostras',
   idle: 'Nenhuma calibração em andamento.', starting: 'Preparando…', previewing: 'Prévia do metrônomo',
   insufficient: 'Amostras consistentes insuficientes. Repita a rodada completa; nenhuma nova estimativa foi aplicada.',

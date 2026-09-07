@@ -10,7 +10,7 @@ const messages: typeof english = {
   noGamepads: 'Nenhum gamepad detectado.', unavailable: 'O acesso a gamepads está indisponível. Use um navegador compatível em contexto seguro ou escolha o teclado.',
   newGamepad: 'Criar perfil para este gamepad', label: 'Nome do perfil', save: 'Salvar perfil',
   savedProfile: 'Perfil atualizado. Confira o estado do armazenamento.', invalid: 'Não foi possível aplicar a alteração. Confira o nome, controles duplicados e mapeamentos obrigatórios.',
-  mapping: 'Mapeie as ações', mappingHelp: 'Escolha uma ação, solte os controles e pressione a tecla, botão ou eixo desejado. Tab sai da captura. Mapeie os cinco frets, um strum e pausa antes de salvar.',
+  mapping: 'Mapeie as ações', mappingHelp: 'Escolha uma ação, solte os controles e pressione a tecla, botão ou eixo desejado. Tab sai da captura. Mapeie os cinco frets e pausa antes de salvar; o strum físico é opcional quando o treino usa strum automático.',
   directionHelp: 'Mapear strum sem direção substitui cima/baixo; mapear cima/baixo remove a ação sem direção.',
   assign: 'Mapear', remove: 'Remover', unassigned: 'Não mapeado',
   up: 'Strum para cima', down: 'Strum para baixo', unknown: 'Strum sem direção', pause: 'Pausar',

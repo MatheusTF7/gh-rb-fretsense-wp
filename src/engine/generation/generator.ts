@@ -88,7 +88,7 @@ export const INITIAL_DRILL_CONFIG: DrillConfig = parseDrillConfig({
   schemaVersion: 1,
   technique: 'sequences', level: 'beginner', pattern: ASCENDING_DESCENDING_PATTERN,
   bpm: 120, subdivision: 2, allowedFrets: 31, patternLength: 10,
-  length: { kind: 'repetitions', count: 4 }, articulation: 'strum', chordSize: 1,
+  length: { kind: 'repetitions', count: 4 }, articulation: 'strum', automaticStrum: true, chordSize: 1,
   sustainTicks: 0, strumDirectionGoal: { kind: 'none' },
   goals: { minimumAccuracy: 0.9, maximumErrors: 4, consistentAttempts: 3,
     requireArticulation: true, requireStrumDirection: false, requireFullSustains: false },

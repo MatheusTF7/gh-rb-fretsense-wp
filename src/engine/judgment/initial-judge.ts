@@ -115,7 +115,10 @@ export class InitialJudge {
     this.releasedSinceHit |= event.releasedFrets;
     const next = this.notes[this.cursor];
     const candidate = next && time >= next.timeMs - this.snapshot.rules.hitWindow.earlyMs ? next : undefined;
-    if (event.strum !== null) {
+    const automaticStrum = event.strum === null && this.snapshot.config.automaticStrum
+      && event.pressedFrets !== 0 && candidate?.note.articulation === 'strum'
+      && event.activeFrets === candidate.note.frets;
+    if (event.strum !== null || automaticStrum) {
       if (!candidate) {
         this.extraStrums++;
         this.records.append({ sequence: this.records.size, timeMs: time, combo: this.changeCombo(false),

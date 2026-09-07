@@ -27,6 +27,10 @@
             <q-select v-if="profile.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('play.connection')" :disable="starting" />
             <q-select v-model="patternId" :options="patternOptions" emit-value map-options :label="t('play.pattern')" :disable="starting" />
             <q-select v-model="articulation" :options="articulationOptions" emit-value map-options :label="t('play.articulation')" :disable="starting || patternId === 'repeated-strum'" />
+            <div class="practice-option">
+              <q-toggle v-model="automaticStrum" color="primary" :label="t('play.automaticStrum')" :disable="starting" />
+              <p class="muted-text">{{ t('play.automaticStrumHelp') }}</p>
+            </div>
             <q-select v-model="chordSize" :options="chordOptions" emit-value map-options :label="t('play.chordSize')" :disable="starting || patternId === 'ascending-descending'" />
             <q-input v-model.number="bpm" type="number" min="40" max="300" step="1" :label="t('play.bpm')" :disable="starting" />
             <q-input v-model.number="repetitions" type="number" min="1" max="128" step="1" :label="t('play.repetitions')" :disable="starting" />
@@ -117,7 +121,7 @@ const { t } = useI18n();
 const router = useRouter();
 const training = useTrainingSession();
 const {
-  captureArea, profileId, profile, connectionId, matchingConnections, patternId, articulation,
+  captureArea, profileId, profile, connectionId, matchingConnections, patternId, articulation, automaticStrum,
   chordSize, bpm, repetitions, audioMode, calibrationId, availableCalibrations,
   discoveryUnavailable, starting, failure, snapshot, view, evaluation, judgments,
   latestJudgment, result, state, isActive, isPaused, isFinished, countdownBeat,
@@ -179,6 +183,8 @@ async function exitPractice() { await leave(); await router.push({ name: 'train'
 .practice-capture:focus { outline: none; }
 .practice-setup { display: grid; gap: 28px; }
 .practice-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.practice-option { align-self: center; }
+.practice-option p { margin: 0 0 0 40px; }
 .practice-context { padding: 16px 18px; border-radius: 10px; background: var(--fs-raised); }
 .practice-context p { margin: 0; }
 .practice-context p + p { margin-top: 6px; }

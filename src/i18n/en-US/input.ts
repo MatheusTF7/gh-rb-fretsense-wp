@@ -9,7 +9,7 @@ export default {
   noGamepads: 'No gamepads detected.', unavailable: 'Gamepad access is unavailable. Use a supported browser in a secure context, or choose keyboard.',
   newGamepad: 'Create profile for this gamepad', label: 'Profile name', save: 'Save profile',
   savedProfile: 'Profile updated. Check the storage status.', invalid: 'Could not apply this change. Check the name, duplicate controls and required mappings.',
-  mapping: 'Map the actions', mappingHelp: 'Choose an action, release the controls, then press the desired key, button or axis. Tab leaves capture. Map all five frets, a strum and pause before saving.',
+  mapping: 'Map the actions', mappingHelp: 'Choose an action, release the controls, then press the desired key, button or axis. Tab leaves capture. Map all five frets and pause before saving; physical strum is optional when practice uses automatic strum.',
   directionHelp: 'Mapping a strum without direction replaces up/down mappings; mapping up/down removes the undirected action.',
   assign: 'Assign', remove: 'Remove', unassigned: 'Not mapped',
   up: 'Strum up', down: 'Strum down', unknown: 'Strum without direction', pause: 'Pause',

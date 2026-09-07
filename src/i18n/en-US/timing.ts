@@ -1,5 +1,5 @@
 export default {
-  intro: 'Prepare audio, confirm your output, then strum with the pulse. This estimates combined compensation, including your response; it does not isolate hardware latencies.',
+  intro: 'Prepare audio, confirm your output, then follow the pulse with strums or fret presses. This estimates combined compensation, including your response; it does not isolate hardware latencies.',
   profile: 'Input profile', connection: 'Gamepad connection', devices: 'Configure devices',
   audioMode: 'Sound reference', enabled: 'With audio', silent: 'Without audio',
   silentNotice: 'Silent mode: no sound reference. Only manual adjustments and visual pulse preview are available.',
@@ -13,8 +13,8 @@ export default {
   judgmentHelp: 'Positive values compensate late input: 1030 ms with +30 ms is judged at 1000 ms. Applied once by the judge.',
   visualHelp: 'Positive values delay the image. They do not change input, sound or judgment.',
   guide: 'Start guided calibration', preview: 'Preview metronome', stop: 'Stop',
-  capture: 'Calibration input area', instructions: 'Listen to four preparation beats, then strum once per beat for 16 beats at 90 BPM using your mapped control. Tab leaves capture. Release held controls before starting.',
-  countIn: 'Preparation: {count}', collecting: 'Strum with the pulse · {count}/16 samples',
+  capture: 'Calibration input area', instructions: 'Listen to four preparation beats, then strum or press a fret once per beat for 16 beats at 90 BPM. Release the fret between beats. Tab leaves capture. Release held controls before starting.',
+  countIn: 'Preparation: {count}', collecting: 'Follow the pulse · {count}/16 samples',
   idle: 'No calibration running.', starting: 'Preparing…', previewing: 'Metronome preview',
   insufficient: 'Not enough consistent samples. Repeat the full round; no new estimate was applied.',
   interrupted: 'Round interrupted. Pending sounds and samples were discarded. Start again explicitly.',

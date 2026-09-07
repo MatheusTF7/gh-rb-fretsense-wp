@@ -4,7 +4,7 @@
 
 ## Fluxo disponível
 
-A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado em memória. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de áudio e calibração. Estão disponíveis:
+A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado em memória. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de strum, modo de áudio e calibração. O strum automático vem selecionado por padrão para teclado e Gamepad. Estão disponíveis:
 
 - subida/descida de cinco frets por strum ou tap;
 - nota repetida por strum;
@@ -19,6 +19,8 @@ HOPO, sustains, níveis adicionais e cenários mistos continuam fora desta etapa
 Pausa congela tempo/julgamento, encerra a captura e para os agendamentos; retomada cria outra captura, sincroniza o baseline e passa por nova contagem. Reiniciar e repetir descartam a captura e o áudio anteriores antes de criar outra tentativa. Sair ou desmontar a rota também cancela `requestAnimationFrame`, polling de Gamepad, listeners e `AudioContext`. Uma interrupção nunca retoma automaticamente.
 
 O modo com som exige ativação por gesto. O modo silencioso preserva contagem e relógio sem criar contexto de áudio. Uma calibração salva precisa pertencer ao perfil/modo; em áudio habilitado, taxa de amostragem e identificador de saída também precisam coincidir. Sem seleção salva, o snapshot usa uma calibração padrão de offsets zero para o contexto atual.
+
+No strum automático, pressionar os frets exatos dentro da janela aciona uma nota de strum sem exigir outra tecla, botão ou eixo. Acordes podem ser formados progressivamente e só disparam quando uma nova pressão completa a máscara esperada; notas repetidas exigem soltar e pressionar novamente. O modo não interfere em tapping nem declara uma direção de palhetada. Desativá-lo restaura integralmente a exigência do strum físico mapeado.
 
 ## Highway e feedback
 

@@ -25,11 +25,14 @@ Strum tem prioridade sobre a transição de frets do mesmo evento e consome no m
 | Strum com candidata e frets exatos | Hit e combo +1 |
 | Strum com candidata e frets incorretos | Um miss `wrong-frets`, com bits ausentes/adicionais; combo zero |
 | Strum sem candidata | `extra-strum`, sem nota associada; combo zero |
+| Nova pressão com frets exatos e strum automático | Hit de nota `strum`; direção não é inventada |
 | Transição correta para tap elegível | Hit e combo +1 |
 | Transição incorreta, fora da janela ou chegando a nota de strum | Mantém a nota pendente |
 | Relógio depois da borda tardia | Um miss por expiração; combo zero |
 
 Acorde é um início único. Todos os frets devem estar ativos no strum; `formationGraceMs = 0` rejeita completar o acorde depois da palhetada. A mesma falha não gera também strum extra ou outro miss por expiração. Na expiração, `missing-strum` indica que uma transição chegou aos frets exatos da candidata de strum dentro da janela, mas nenhuma palhetada a resolveu. Sem essa evidência, a causa é `window-expired`.
+
+Quando a configuração captura `automaticStrum: true`, uma transição sem strum físico também tem prioridade ao completar os frets exatos de uma candidata `strum` com ao menos um bit pressionado. Transições parciais não são penalizadas imediatamente, o que permite formar acordes em mais de um evento. Uma liberação que apenas chega à máscara correta não dispara a nota; a repetição exige nova pressão.
 
 Tap exige pressionamento/liberação real e estado final exato. Manter um fret não acerta a próxima nota. Se a nota imediatamente anterior tem os mesmos frets e foi acertada, é necessário liberar o próprio alvo depois daquele hit e pressioná-lo no novo hit. Alternar apenas um fret adicional não satisfaz essa condição. A liberação pode acontecer antes da janela seguinte. Baselines e limpezas de pausa não contam como liberação; evidência real anterior à pausa é preservada. Um strum correto em tap acerta musicalmente, mas registra `failed / strum-used-for-tap`.
 
