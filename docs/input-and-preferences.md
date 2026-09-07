@@ -33,7 +33,7 @@ A conexão inclui um identificador transitório independente do índice de Gamep
 
 Na mesma amostra, atualizam-se todos os frets e emitem-se as bordas de strum na ordem dos bindings. Só o primeiro evento inclui máscaras pressionadas/liberadas; os demais usam zero. Pausa tem prioridade e não emite releases sintéticos ou strums daquele lote. A limpeza sincroniza a máscara por `onBaseline`, separado dos eventos de gameplay.
 
-Todos os timestamps desta etapa usam **instante de observação**, com `timeSource: 'observation'`. `InputTimeline.sample` recebe `performance.now()` e devolve tempo ativo bruto. A interface de inspeção usa tempo decorrido desde o início da captura. Conversão de timestamps do dispositivo, áudio e calibração ficam na etapa 05; nenhum offset é aplicado pelo adaptador.
+Na entrega original da etapa 04, todos os timestamps usavam **instante de observação**, com `timeSource: 'observation'`. A interface de inspeção conserva esse comportamento e usa tempo decorrido desde o início da captura. A etapa 05 ampliou `InputTimeline.sample` para receber também o timestamp do dispositivo e devolver tempo ativo bruto com a fonte escolhida. `createSessionInput` usa `SessionInputTimeline` por padrão, com fallback para observação; nenhum offset é aplicado pelo adaptador. As conversões estão descritas em [relógio e calibração](./timing-and-calibration.md).
 
 `createSessionInput` liga o contrato à `TrainingSession`, usando o dispositivo do snapshot. Antes de iniciar sua captura, a sessão deve estar em `ready`, `countdown` ou `paused`. Durante preparação/contagem/pausa, frets são sincronizados sem consumir sequência de gameplay; apenas `running` grava eventos. A sequência é preservada ao parar/retomar a instância e pode continuar a partir do último evento da sessão quando um adaptador é substituído. O relógio fornecido deve preservar o horizonte bruto e excluir pausas.
 
@@ -53,4 +53,4 @@ Falha de acesso ou gravação mantém alterações em memória e informa que nã
 
 ## Próxima integração
 
-A etapa 05 implementará relógio ativo da plataforma, áudio e calibração. A etapa 06 fornecerá o julgador, e a etapa 07 conectará esses componentes à área jogável. A existência dos adaptadores não confirma latência, combinações suportadas por um teclado específico ou compatibilidade de um modelo de guitarra; essas confirmações dependem do desenvolvedor e do hardware utilizado.
+A etapa 05 implementou relógio ativo da plataforma, áudio e calibração. A etapa 06 fornecerá o julgador, e a etapa 07 conectará esses componentes à área jogável. A existência dos adaptadores não confirma latência, combinações suportadas por um teclado específico ou compatibilidade de um modelo de guitarra; essas confirmações dependem do desenvolvedor e do hardware utilizado.

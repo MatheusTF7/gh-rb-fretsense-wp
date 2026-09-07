@@ -6,6 +6,7 @@ import { ENGINE_LIMITS as limits } from '../domain/limits';
 import { immutableCopy } from '../domain/immutable';
 import { EngineError, readChoice, readInteger, readIsoDate, readNumber, readString, requireCondition } from '../domain/validation';
 import { getChartEndTime, ticksToMilliseconds, type MonotonicClock } from '../timing/musical-time';
+import { judgmentTime } from '../timing/calibrated-time';
 import { BoundedBuffer } from './bounded-buffer';
 import { createUnjudgedMetrics, parseSessionEvaluation, type SessionEvaluation } from './evaluation';
 import {
@@ -58,6 +59,7 @@ export class TrainingSession {
   constructor(private readonly services: SessionServices) {}
 
   getSnapshot(): SessionSnapshot | null { return this.snapshot; }
+  getCountdownDeadline(): number | null { return this.countdownEndsAtMs; }
 
   getView(): SessionView {
     return Object.freeze({ state: this.state, sessionId: this.snapshot?.id ?? null,
@@ -66,6 +68,14 @@ export class TrainingSession {
   }
 
   getInputs(): readonly NormalizedInputEvent[] { return this.inputs.snapshot(); }
+
+  /** Projeta um instante da fonte monotônica sem avançar o horizonte de julgamento. */
+  projectActiveTime(monotonicMs: number): number {
+    readNumber(monotonicMs, 'clock.projection', 0, Number.MAX_SAFE_INTEGER);
+    if (this.state !== 'running' || this.runningSinceMs === null) return this.activeTimeMs;
+    requireCondition(monotonicMs >= this.runningSinceMs, 'clock.projection', 'Timestamp precedes the current running interval.', 'invalid-clock');
+    return Math.min(this.hardStopMs, this.accumulatedMs + monotonicMs - this.runningSinceMs);
+  }
 
   /** Canal de entrega única; getView continua permitindo consultar o mesmo resultado imutável. */
   takeResult(): SessionResult | null {
@@ -197,7 +207,7 @@ export class TrainingSession {
   reportEvaluation(value: unknown): void {
     this.requireState('running', 'paused');
     const snapshot = this.requireSnapshot();
-    const evaluation = parseSessionEvaluation(value, snapshot, this.activeTimeMs - snapshot.calibration.judgmentOffsetMs);
+    const evaluation = parseSessionEvaluation(value, snapshot, judgmentTime(this.activeTimeMs, snapshot.calibration));
     requireCondition(evaluation.metrics.hitNotes + evaluation.metrics.extraStrums <= this.inputs.size,
       'evaluation.metrics', 'Hits and extra strums require recorded inputs.');
     if (this.evaluation !== null) {
@@ -221,7 +231,7 @@ export class TrainingSession {
     const report = this.evaluation;
     requireCondition(report !== null && report.metrics.unjudgedNotes === 0 && report.pendingSustains === 0
       && report.throughTimeMs > this.endTimeMs
-      && report.throughTimeMs === this.activeTimeMs - snapshot.calibration.judgmentOffsetMs,
+      && report.throughTimeMs === judgmentTime(this.activeTimeMs, snapshot.calibration),
       'session.complete', 'Completion requires a current evaluation, all notes/tails resolved and the final inclusive window closed.');
     return this.finish({ state: 'completed' });
   }
@@ -316,7 +326,7 @@ export class TrainingSession {
     const metrics = evaluation?.metrics ?? createUnjudgedMetrics(snapshot.chart.notes.length);
     const judgmentRecords = evaluation?.judgmentRecords ?? 'not-recorded';
     const hasPendingEvaluation = evaluation !== null && (evaluation.pendingSustains > 0
-      || evaluation.throughTimeMs < this.activeTimeMs - snapshot.calibration.judgmentOffsetMs);
+      || evaluation.throughTimeMs < judgmentTime(this.activeTimeMs, snapshot.calibration));
     const reasons: Extract<ProgressionEligibility, { eligible: false }>['reasons'][number][] = [];
     if (ending.state === 'aborted') reasons.push('attempt-aborted');
     if (this.interruptions.length > 0) reasons.push('attempt-interrupted');

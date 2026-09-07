@@ -123,7 +123,7 @@ export class BrowserInputAdapter implements InputAdapter {
     this.keys.add(event.code);
     try {
       if (this.options.onControl) this.options.onControl({ kind: 'key', code: event.code });
-      if (this.active) this.process(this.profile.bindings.map(({ control }) => control.kind === 'key' && this.keys.has(control.code)), false, observedAtMs);
+      if (this.active) this.process(this.profile.bindings.map(({ control }) => control.kind === 'key' && this.keys.has(control.code)), false, observedAtMs, event.timeStamp);
     } catch { this.interrupt('unavailable'); }
   };
 
@@ -131,7 +131,7 @@ export class BrowserInputAdapter implements InputAdapter {
     const observedAtMs = performance.now();
     if (!this.active || !this.keys.delete(event.code)) return;
     if (this.accepts(event)) event.preventDefault();
-    try { this.process(this.profile.bindings.map(({ control }) => control.kind === 'key' && this.keys.has(control.code)), false, observedAtMs); }
+    try { this.process(this.profile.bindings.map(({ control }) => control.kind === 'key' && this.keys.has(control.code)), false, observedAtMs, event.timeStamp); }
     catch { this.interrupt('unavailable'); }
   };
 
@@ -177,7 +177,7 @@ export class BrowserInputAdapter implements InputAdapter {
           }
         }
       }
-      this.process(states, !this.initialized, observedAtMs);
+      this.process(states, !this.initialized, observedAtMs, device.timestamp);
       if (!this.active) return;
       for (const { control } of this.profile.bindings) {
         if (control.kind !== 'axis') continue;
@@ -193,7 +193,7 @@ export class BrowserInputAdapter implements InputAdapter {
     if (this.active) this.frame = requestAnimationFrame(this.poll);
   };
 
-  private process(states: boolean[], baseline: boolean, observedAtMs: number): void {
+  private process(states: boolean[], baseline: boolean, observedAtMs: number, deviceTimestampMs?: number): void {
     let nextMask = 0;
     const strums: NonNullable<NormalizedInputEvent['strum']>[] = [];
     let pause = false;
@@ -212,14 +212,19 @@ export class BrowserInputAdapter implements InputAdapter {
     if (baseline || (this.options.getMode?.() ?? this.mode) === 'baseline') { this.options.onBaseline(this.mask); return; }
     if (previousMask === this.mask && strums.length === 0) return;
     let time: number;
-    try { time = this.options.timeline.sample(observedAtMs); }
+    let timeSource: NormalizedInputEvent['timeSource'] = 'observation';
+    try {
+      const stamp = this.options.timeline.sample(observedAtMs, deviceTimestampMs);
+      time = typeof stamp === 'number' ? stamp : stamp.sessionTimeMs;
+      if (typeof stamp !== 'number') timeSource = stamp.timeSource;
+    }
     catch { this.interrupt('input-timing-invalid'); return; }
     if (!Number.isFinite(time) || time < this.lastTime || time < 0 || time > Number.MAX_SAFE_INTEGER) { this.interrupt('input-timing-invalid'); return; }
     this.lastTime = time;
     const attacks = strums.length > 0 ? strums : [null];
     for (const [index, strum] of attacks.entries()) {
       if (!this.active) break;
-      this.options.onEvent(Object.freeze({ sequence: this.sequence++, sessionTimeMs: time, timeSource: 'observation',
+      this.options.onEvent(Object.freeze({ sequence: this.sequence++, sessionTimeMs: time, timeSource,
         activeFrets: this.mask, pressedFrets: (index === 0 ? this.mask & ~previousMask & 31 : 0) as FretMask,
         releasedFrets: (index === 0 ? previousMask & ~this.mask & 31 : 0) as FretMask, strum,
         source: Object.freeze({ kind: this.profile.kind, deviceProfileId: this.profile.id, connectionId: this.connectionId }),

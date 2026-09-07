@@ -1,7 +1,7 @@
 # Regras de gameplay do Fretsense
 
 **Perfil:** `fretsense-v1` · **Versão:** `1.0.0` · **Registro:** 2026-09-07.  
-**Estado:** especificação, contratos, núcleo inicial e adaptadores de teclado/Gamepad revisados por análise estática manual. Relógio da plataforma e julgamento destas regras permanecem nas etapas 05–08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo já implementado está descrito em [núcleo inicial](./engine-foundation.md) e [entrada e preferências](./input-and-preferences.md), sem confirmação em execução.
+**Estado:** especificação, contratos, núcleo inicial, adaptadores de teclado/Gamepad e base de relógio/áudio/calibração revisados por análise estática manual. Julgamento e integração jogável permanecem nas etapas 06–08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo já implementado está descrito em [núcleo inicial](./engine-foundation.md), [entrada e preferências](./input-and-preferences.md) e [relógio e calibração](./timing-and-calibration.md), sem confirmação em execução.
 
 Este é um perfil próprio de treinamento, sem equivalência declarada com versões de Guitar Hero, Rock Band ou outros jogos. Seus números são decisões iniciais do produto, não medições de hardware. A referência em código é [`FRETSENSE_V1_RULE_PROFILE`](../src/engine/domain/rules.ts).
 

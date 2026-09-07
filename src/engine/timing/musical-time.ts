@@ -25,7 +25,7 @@ export function getChartEndTime(chart: Chart, rules: RuleProfile): Milliseconds 
   return end;
 }
 
-/** O relógio/adaptador da plataforma será fornecido nas etapas 04–05. */
+/** Porta implementada pelo SessionClock da plataforma, independente de APIs no núcleo. */
 export interface MonotonicClock {
   nowMs(): Milliseconds;
 }

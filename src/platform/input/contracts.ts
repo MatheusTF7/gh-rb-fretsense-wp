@@ -7,8 +7,12 @@ export interface GamepadConnection {
   readonly connectionId: string;
 }
 export interface InputTimeline {
-  /** Etapa 05 fornece a conversão para tempo ativo bruto, nunca já calibrado. */
-  sample(observedAtMs: number): number;
+  /** Número preserva clientes de inspeção; InputTime também informa a fonte escolhida. */
+  sample(observedAtMs: number, deviceTimestampMs?: number): number | InputTime;
+}
+export interface InputTime {
+  readonly sessionTimeMs: number;
+  readonly timeSource: NormalizedInputEvent['timeSource'];
 }
 export interface InputCallbacks {
   onEvent(event: NormalizedInputEvent): void;

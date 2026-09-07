@@ -1,7 +1,9 @@
 import input from './input';
+import timing from './timing';
 
 export default {
   input,
+  timing,
   app: {
     tagline: 'Five-fret practice',
     workspace: 'Your practice space',
@@ -129,15 +131,15 @@ export default {
       'Map buttons and axes. Strum direction depends on the distinct actions configured.',
     calibrationTitle: 'Timing is part of the setup',
     calibrationDescription:
-      'Calibration will help align what you hear, what you see and when your input is received.',
+      'Use guided calibration or manual adjustments to align your input and visual reference.',
   },
   calibration: {
     eyebrow: 'Your timing reference',
     title: 'Calibration',
     description: 'Bring sound, visuals and input into alignment.',
-    stateTitle: 'Calibration is being prepared',
+    stateTitle: 'Prepare your timing reference',
     stateDescription:
-      'Guided calibration and manual adjustments will become available with input capture and audio. No calibration has been applied here.',
+      'Choose an input profile and confirm your audio output before measuring or loading compensation.',
   },
   history: {
     eyebrow: 'Your progress',

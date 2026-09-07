@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–04 revisadas estaticamente, sem confirmação em execução. Etapas 05–20 pendentes.  
+**Status:** etapas 01–05 revisadas estaticamente, sem confirmação em execução. Etapas 06–20 pendentes.  
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). Ainda precisam ser implementados relógio da plataforma, áudio, calibração, julgamento, integração com a highway, catálogo completo, relatórios e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). Ainda precisam ser implementados julgamento, integração com a highway, catálogo completo, relatórios e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -276,21 +276,35 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Implementar um relógio de sessão monotônico com início, tempo ativo e exclusão dos períodos de pausa.
-- [ ] Converter timestamps de entrada e tempo de áudio para a referência comum; documentar fallback quando o dispositivo não fornecer timestamp utilizável.
-- [ ] Manter ordenação estável para eventos observados no mesmo instante, sem inventar precisão que o dispositivo não fornece.
-- [ ] Criar metrônomo e contagem de entrada com Web Audio, agendando sons antecipadamente no relógio de áudio.
-- [ ] Inicializar ou retomar áudio a partir de interação do usuário e tratar indisponibilidade ou suspensão.
-- [ ] Cancelar sons pendentes e reancorar relógios ao pausar/reiniciar; uma pausa não deve acumular sons ou entradas para a retomada.
-- [ ] Criar calibração guiada e ajustes manuais com unidades e sentido do ajuste claros.
-- [ ] Tratar a medição guiada inicial como compensação combinada; não afirmar que ela isolou latência de áudio, vídeo e entrada individualmente.
-- [ ] Aplicar offset de julgamento uma única vez. Offset visual deve deslocar a highway sem alterar o resultado musical por efeito colateral.
-- [ ] Salvar calibração por perfil/contexto e permitir retorno aos valores padrão; indicar quando uma mudança de dispositivo ou saída exige revisão.
-- [ ] Preparar modo sem áudio com informação clara de que a referência sonora está indisponível.
+- [x] Implementar um relógio de sessão monotônico com início, tempo ativo e exclusão dos períodos de pausa.
+- [x] Converter timestamps de entrada e tempo de áudio para a referência comum; documentar fallback quando o dispositivo não fornecer timestamp utilizável.
+- [x] Manter ordenação estável para eventos observados no mesmo instante, sem inventar precisão que o dispositivo não fornece.
+- [x] Criar metrônomo e contagem de entrada com Web Audio, agendando sons antecipadamente no relógio de áudio.
+- [x] Inicializar ou retomar áudio a partir de interação do usuário e tratar indisponibilidade ou suspensão.
+- [x] Cancelar sons pendentes e reancorar relógios ao pausar/reiniciar; uma pausa não deve acumular sons ou entradas para a retomada.
+- [x] Criar calibração guiada e ajustes manuais com unidades e sentido do ajuste claros.
+- [x] Tratar a medição guiada inicial como compensação combinada; não afirmar que ela isolou latência de áudio, vídeo e entrada individualmente.
+- [x] Aplicar offset de julgamento uma única vez. Offset visual deve deslocar a highway sem alterar o resultado musical por efeito colateral.
+- [x] Salvar calibração por perfil/contexto e permitir retorno aos valores padrão; indicar quando uma mudança de dispositivo ou saída exige revisão.
+- [x] Preparar modo sem áudio com informação clara de que a referência sonora está indisponível.
 
 **Entregáveis:** adaptadores de relógio e áudio, metrônomo, página de calibração e contratos de tempo documentados.
 
 **Critério de conclusão:** geração, julgamento, áudio e desenho usam conversões explícitas; pausa e calibração não contam o tempo duas vezes nem alteram notas já julgadas.
+
+#### Registro da etapa 05 — 2026-09-07
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** relógio monotônico e projeção de tempo ativo, timestamps de teclado/Gamepad com fallback e sequência estável, conversões explícitas de áudio, metrônomo com contagem antecipada, calibração guiada/manual, modo sem áudio e persistência por contexto.
+- **Arquivos relevantes:** `src/platform/{timing,audio,calibration}`, `src/platform/input`, `src/engine/timing`, `src/engine/session/training-session.ts`, `src/stores/calibration.ts`, `src/pages/CalibrationPage.vue` e traduções `pt-BR`/`en-US`. Contratos e uso em [relógio e calibração](./timing-and-calibration.md).
+- **Decisões temporais:** a sessão continua sendo a única proprietária da exclusão de pausas/contagens. `SessionInputTimeline` entrega tempo bruto; `judgmentTime` e `visualTime` centralizam correções independentes. A sessão usa a primeira função na validação de relatórios; a prévia usa somente a segunda. Julgador e highway deverão consumir essas fronteiras nas etapas 06–07.
+- **Áudio e interrupções:** gesto explícito para preparar/retomar, ativação limitada a três segundos, janela de agendamento de 120 ms consultada a cada 25 ms, no máximo 16 nós e 4.096 pulsos/610 segundos. Interrupção cancela sons e amostras; retomada da sessão reancora áudio e preserva a posição da grade musical. Nenhuma retomada automática.
+- **Calibração:** quatro pulsos de preparação e 16 strums a 90 BPM; mínimo de 12 amostras, janela de ±250 ms, mediana e MAD máximo de 40 ms. A estimativa combina resposta humana e atrasos do conjunto. Ajustes manuais aceitam ±1.000 ms; salvar e restaurar padrões são ações explícitas.
+- **Persistência:** chave `fretsense.calibrations.v1`, esquema 1, até 64 ajustes e 262.144 unidades de texto. Compatibilidade exige perfil/versão e contexto de áudio/navegador/plataforma. Saída desconhecida exige conferência; alterações detectadas limpam o rascunho e solicitam revisão. Falhas mantêm dados em memória; dados incompatíveis não são sobrescritos.
+- **Revisão realizada:** somente análise estática manual de imports, tipos, fórmulas, estados, callbacks, limites, persistência e descarte. Consulta às especificações primárias de Web Audio, High Resolution Time e Gamepad. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou verificações no navegador.
+- **Limitações e pendências:** calibração e metrônomo disponíveis na página própria; `SessionAudio` e `createSessionInput` aguardam o coordenador jogável da etapa 07. Precisão física, áudio, visual e hardware não foram confirmados em execução. Sem sincronização entre abas ou migração de dados desconhecidos.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 06, julgamento inicial.
 
 ### Etapa 06 — Implementar julgamento inicial
 

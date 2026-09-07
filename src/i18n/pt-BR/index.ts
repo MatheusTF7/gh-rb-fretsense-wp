@@ -1,8 +1,10 @@
 import type enUS from '../en-US';
 import input from './input';
+import timing from './timing';
 
 const messages: typeof enUS = {
   input,
+  timing,
   app: {
     tagline: 'Treino de cinco frets',
     workspace: 'Seu espaço de prática',
@@ -130,15 +132,15 @@ const messages: typeof enUS = {
       'Mapeie botões e eixos. A direção do strum depende das ações distintas configuradas.',
     calibrationTitle: 'O timing faz parte da preparação',
     calibrationDescription:
-      'A calibração ajudará a alinhar o que você ouve, o que vê e o momento em que sua entrada é recebida.',
+      'Use a calibração guiada ou ajustes manuais para alinhar sua entrada e a referência visual.',
   },
   calibration: {
     eyebrow: 'Sua referência de tempo',
     title: 'Calibração',
     description: 'Aproxime som, imagem e entrada do mesmo instante.',
-    stateTitle: 'A calibração está em preparação',
+    stateTitle: 'Prepare sua referência de tempo',
     stateDescription:
-      'A calibração guiada e os ajustes manuais estarão disponíveis junto da captura de entrada e do áudio. Nenhuma calibração foi aplicada aqui.',
+      'Escolha um perfil de entrada e confirme a saída de áudio antes de medir ou carregar uma compensação.',
   },
   history: {
     eyebrow: 'Sua evolução',

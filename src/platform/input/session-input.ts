@@ -1,16 +1,18 @@
 import type { TrainingSession } from '@/engine/session';
 import { BrowserInputAdapter } from './browser-adapter';
-import type { AdapterOptions, InputInterruption } from './contracts';
+import type { AdapterOptions, InputInterruption, InputTimeline } from './contracts';
+import { SessionInputTimeline } from '../timing/session-clock';
 
-/** A etapa 05 fornece timeline; a etapa 07 será proprietária deste vínculo e do descarte. */
+/** Usa a projeção temporal da sessão; o coordenador da etapa 07 será proprietário do descarte. */
 export function createSessionInput(
   session: TrainingSession,
-  options: Omit<AdapterOptions, 'profile' | 'onEvent' | 'onBaseline' | 'onInterrupt' | 'getMode' | 'canStart' | 'sequenceStart'>,
+  options: Omit<AdapterOptions, 'profile' | 'onEvent' | 'onBaseline' | 'onInterrupt' | 'getMode' | 'canStart' | 'sequenceStart' | 'timeline'> & { readonly timeline?: InputTimeline },
   onInterrupt: (reason: InputInterruption) => void,
 ): BrowserInputAdapter {
   const snapshot = session.getSnapshot();
   if (!snapshot) throw new Error('Prepare a session before connecting input');
   return new BrowserInputAdapter({ ...options, profile: snapshot.device,
+    timeline: options.timeline ?? new SessionInputTimeline(session),
     getMode: () => session.getView().state === 'running' ? 'events' : 'baseline',
     canStart: () => ['ready', 'countdown', 'paused'].includes(session.getView().state),
     sequenceStart: (session.getInputs().at(-1)?.sequence ?? -1) + 1,
