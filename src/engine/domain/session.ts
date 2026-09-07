@@ -47,7 +47,9 @@ export type SessionEnding =
   | { readonly state: 'completed' }
   | {
       readonly state: 'aborted';
-      readonly reason: 'user-exit' | 'restart' | 'context-changed' | 'unrecoverable-error';
+      readonly reason:
+        | 'user-exit' | 'restart' | 'context-changed' | 'unrecoverable-error'
+        | 'resource-limit' | 'evaluation-timeout';
     };
 
 export type ProgressionEligibility =

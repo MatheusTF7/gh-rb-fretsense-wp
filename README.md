@@ -6,7 +6,9 @@
 
 Treinador procedural para jogos rítmicos de cinco frets, com exercícios adaptativos, análise de timing, identificação de padrões de erro e IA executada localmente no navegador.
 
-As etapas 01–02 entregaram os contratos do perfil `fretsense-v1` e a estrutura da interface: navegação, guia de técnicas com busca, área de treino em preparação e configurações de idioma/aparência. Português e inglês estão disponíveis; busca e preferências duram a visita e são restauradas ao recarregar. Exercícios jogáveis, captura de dispositivos, calibração e histórico de sessões ainda estão pendentes. Consulte o [plano de desenvolvimento](docs/fretsense-development-plan.md) e as [regras de gameplay](docs/gameplay-rules.md) para acompanhar o escopo. A entrega foi revisada somente por análise estática manual, sem confirmação em execução.
+As etapas 01–03 entregaram os contratos do perfil `fretsense-v1`, a estrutura da interface e o núcleo inicial de geração e sessão. A interface oferece navegação, guia de técnicas com busca, área de treino em preparação e configurações de idioma/aparência. Português e inglês estão disponíveis; busca e preferências duram a visita e são restauradas ao recarregar.
+
+O núcleo TypeScript gera subida/descida e notas repetidas com semente/versão, valida configurações, captura snapshots imutáveis e controla tentativas com pausa, retomada, repetição e limites de recursos. Sua integração com a interface, julgamento, exercícios jogáveis, captura de dispositivos, calibração e histórico ainda estão pendentes. Consulte o [plano de desenvolvimento](docs/fretsense-development-plan.md), as [regras de gameplay](docs/gameplay-rules.md) e a [documentação do núcleo](docs/engine-foundation.md). A entrega foi revisada somente por análise estática manual, sem confirmação em execução.
 
 ## GitHub description
 

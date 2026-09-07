@@ -1,0 +1,18 @@
+/** Limites da primeira implementação; mudanças afetam a versão do gerador. */
+export const ENGINE_LIMITS = Object.freeze({
+  minimumBpm: 40,
+  maximumBpm: 300,
+  maximumPatternLength: 128,
+  maximumRepetitions: 128,
+  maximumNotes: 4096,
+  maximumDurationMs: 600_000,
+  maximumTicks: 1_440_000,
+  maximumInputEvents: 65_536,
+  maximumJudgmentEvents: 131_072,
+  maximumInterruptions: 64,
+  maximumBindings: 64,
+  maximumTextLength: 128,
+  maximumOffsetMs: 1000,
+  countdownBeats: 4,
+  resultGraceMs: 5000,
+});

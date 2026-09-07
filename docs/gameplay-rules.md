@@ -1,7 +1,7 @@
 # Regras de gameplay do Fretsense
 
 **Perfil:** `fretsense-v1` · **Versão:** `1.0.0` · **Registro:** 2026-09-07.  
-**Estado:** especificação e contratos iniciais revisados por análise estática manual. O motor que executará estas regras será implementado nas etapas 03–08 do [plano de desenvolvimento](./fretsense-development-plan.md).
+**Estado:** especificação, contratos e núcleo inicial de geração/sessão revisados por análise estática manual. Adaptadores e julgamento destas regras permanecem nas etapas 04–08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo já implementado está descrito em [núcleo inicial](./engine-foundation.md), sem confirmação em execução.
 
 Este é um perfil próprio de treinamento, sem equivalência declarada com versões de Guitar Hero, Rock Band ou outros jogos. Seus números são decisões iniciais do produto, não medições de hardware. A referência em código é [`FRETSENSE_V1_RULE_PROFILE`](../src/engine/domain/rules.ts).
 
@@ -32,7 +32,7 @@ Este é um perfil próprio de treinamento, sem equivalência declarada com vers�
 
 Em uma duração fixa, o gerador só pode incluir notas inteiras que caibam na extensão, incluindo caudas. Não encurta sustains silenciosamente. `articulation: 'mixed'` delega a escolha de cada nota ao padrão versionado. Metas de direção são materializadas em `expectedStrumDirection` por nota de `strum`; nas demais articulações esse campo é `null` neste perfil.
 
-Todas as grandezas numéricas precisam ser finitas; ticks, contadores, índices e sequências são inteiros nos intervalos correspondentes. BPM, extensão, tamanho do padrão, repetições e quantidade de tentativas consistentes são positivos; razões ficam em `[0, 1]`, limites de erros são não negativos. Uma chart precisa conter ao menos uma nota. Frets de cada nota devem estar contidos em `allowedFrets`; valores de quantidade de bits e articulação também precisam respeitar o perfil. Os limites de BPM, densidade, duração e buffers serão fixados e implementados na etapa 03, sem presumir que um objeto tipado já foi validado.
+Todas as grandezas numéricas precisam ser finitas; ticks, contadores, índices e sequências são inteiros nos intervalos correspondentes. BPM, extensão, tamanho do padrão, repetições e quantidade de tentativas consistentes são positivos; razões ficam em `[0, 1]`, limites de erros são não negativos. Uma chart precisa conter ao menos uma nota. Frets de cada nota devem estar contidos em `allowedFrets`; valores de quantidade de bits e articulação também precisam respeitar o perfil. A etapa 03 implementou validação e limites iniciais em `ENGINE_LIMITS`, detalhados no [núcleo inicial](./engine-foundation.md), sem presumir que um objeto tipado já foi validado.
 
 ## 3. Relógio, offsets e ordenação
 
@@ -150,6 +150,8 @@ A retomada é explícita, passa por nova contagem e preserva notas pendentes e c
 
 Uma tentativa completa somente depois de `judgedNowMs` ultrapassar o maior entre extensão musical da chart, último início mais a janela tardia e último fim de sustain, com todos os inícios e caudas resolvidos. O pequeno intervalo final de julgamento faz parte do tempo ativo. Um abandono resolve apenas o que já foi julgado; notas pendentes permanecem **não julgadas**, sem misses inventados. Reiniciar emite `aborted / restart` para a tentativa ativa. Um estado terminal emite exatamente um resultado, mesmo que outra ação de encerramento chegue depois.
 
+O núcleo inicial limita a espera final por conclusão a cinco segundos ativos adicionais e aborta com `evaluation-timeout` caso o coordenador avance até esse limite sem conclusão. Exceder buffers/interrupções usa `resource-limit`, preservando os registros já aceitos. Esses motivos são falhas de encerramento/recursos, não erros musicais. A etapa 03 recebe relatórios do futuro julgador; não calcula acertos, misses ou resolução de caudas por conta própria.
+
 **Progressão automática:** somente tentativas completas, sem qualquer pausa/interrupção e com dados das metas exigidas disponíveis são elegíveis, tanto em prática quanto em avaliação. Pausar e retomar não restaura essa elegibilidade. Tentativas abandonadas/interrompidas continuam no histórico, claramente identificadas. Elegibilidade não é promoção: metas, amostra mínima e consistência serão implementadas na etapa 13. Prática pausada ainda pode fundamentar sugestões informativas, sem promoção automática.
 
 ## 8. Resultados, técnica e diagnóstico
@@ -188,6 +190,6 @@ Diagnóstico posterior referencia sessões, notas, entradas e julgamentos, infor
 | [`analysis.ts`](../src/engine/domain/analysis.ts) | Métricas, evidências, diagnóstico e `TrainingRecommendation` |
 | [`index.ts`](../src/engine/domain/index.ts) | Exportações públicas do domínio |
 
-Os contratos usam dados serializáveis, imports locais e propriedades/coleções `readonly`, sem Vue, Quasar, Pinia ou APIs do navegador. Os aliases de unidades continuam sendo números; `readonly` não valida dados nem congela objetos em execução. Validação nas fronteiras e captura de cópias imutáveis serão implementadas na etapa 03; adaptadores, relógio e julgador nas etapas 04–08. Nenhuma dessas funcionalidades deve aparecer como operacional só por possuir um tipo.
+Os contratos usam dados serializáveis, imports locais e propriedades/coleções `readonly`, sem Vue, Quasar, Pinia ou APIs do navegador. Os aliases de unidades continuam sendo números; `readonly` não valida dados nem congela objetos em execução. A etapa 03 acrescentou validação nas fronteiras e captura de cópias congeladas, além de geração, conversões musicais e ciclo da sessão. Adaptadores, relógio da plataforma e julgador permanecem nas etapas 04–08. Nenhuma funcionalidade deve aparecer como operacional só por possuir um tipo.
 
 Revisão desta entrega: **somente análise estática manual** de regras, contratos, imports, tipos e coerência entre documentos. Não foram criados/executados testes nem executados lint, formatação automática, build, typecheck, aplicação, preview ou navegador. Funcionamento em execução permanece sem confirmação do desenvolvedor.

@@ -1,4 +1,5 @@
 import type { Milliseconds, VersionedReference } from './music';
+import { immutableCopy } from './immutable';
 
 /** Somente políticas definidas nesta etapa; novos comportamentos exigem nova versão. */
 export interface RuleProfile extends VersionedReference {
@@ -54,7 +55,7 @@ export interface RuleProfile extends VersionedReference {
 }
 
 /** Especificação do treinador; não declara equivalência com um jogo comercial. */
-export const FRETSENSE_V1_RULE_PROFILE = {
+export const FRETSENSE_V1_RULE_PROFILE = immutableCopy({
   id: 'fretsense-v1',
   version: '1.0.0',
   hitWindow: { earlyMs: 120, lateMs: 120, boundaries: 'inclusive' },
@@ -93,4 +94,4 @@ export const FRETSENSE_V1_RULE_PROFILE = {
     interruptions: 'exclude-attempt',
     requiredTechniqueData: 'must-be-available',
   },
-} as const satisfies RuleProfile;
+} as const satisfies RuleProfile);

@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–02 revisadas estaticamente, sem confirmação em execução. Etapas 03–20 pendentes.  
+**Status:** etapas 01–03 revisadas estaticamente, sem confirmação em execução. Etapas 04–20 pendentes.  
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. Ainda precisam ser implementados validação e operações do domínio musical, adaptadores de entrada, relógio, áudio, julgamento, renderização da highway, exercícios do catálogo, relatórios e persistência. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). Ainda precisam ser implementados adaptadores de entrada, relógio da plataforma, áudio, julgamento, integração com a highway, catálogo completo, relatórios e persistência. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -207,19 +207,32 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Implementar os contratos definidos na etapa 01 e conversões de ticks para tempo de sessão.
-- [ ] Implementar geração com semente e versão, começando pela sequência `G R Y B O → O B Y R G` e notas repetidas para strum.
-- [ ] Representar acordes, duração e articulação por nota desde o primeiro modelo.
-- [ ] Validar configurações: valores finitos, intervalos permitidos, máscara válida, subdivisão, tamanho e combinações executáveis.
-- [ ] Limitar notas por tentativa e tamanho dos buffers; treino contínuo deve funcionar em blocos delimitados.
-- [ ] Implementar estados `idle`, `ready`, `countdown`, `running`, `paused`, `completed` e `aborted`, com transições explícitas.
-- [ ] Implementar início, pausa, retomada, reinício e encerramento, com resultado emitido uma única vez.
-- [ ] Capturar configuração e chart imutáveis por tentativa, incluindo versão do gerador e perfil de regras.
-- [ ] Permitir repetir exatamente a tentativa ou gerar uma variação com nova semente.
+- [x] Implementar os contratos definidos na etapa 01 e conversões de ticks para tempo de sessão.
+- [x] Implementar geração com semente e versão, começando pela sequência `G R Y B O → O B Y R G` e notas repetidas para strum.
+- [x] Representar acordes, duração e articulação por nota desde o primeiro modelo.
+- [x] Validar configurações: valores finitos, intervalos permitidos, máscara válida, subdivisão, tamanho e combinações executáveis.
+- [x] Limitar notas por tentativa e tamanho dos buffers; treino contínuo deve funcionar em blocos delimitados.
+- [x] Implementar estados `idle`, `ready`, `countdown`, `running`, `paused`, `completed` e `aborted`, com transições explícitas.
+- [x] Implementar início, pausa, retomada, reinício e encerramento, com resultado emitido uma única vez.
+- [x] Capturar configuração e chart imutáveis por tentativa, incluindo versão do gerador e perfil de regras.
+- [x] Permitir repetir exatamente a tentativa ou gerar uma variação com nova semente.
 
 **Entregáveis:** módulos `domain`, `generation`, `timing` e `session`, ainda sem dependência de interface.
 
 **Critério de conclusão:** a leitura dos fluxos mostra que a mesma configuração, semente e versão produzem o mesmo exercício e que uma tentativa possui início/fim e recursos limitados.
+
+#### Registro da etapa 03 — 2026-09-07
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** validação nas fronteiras, geração com semente/versão, conversões musicais, limites de recursos, snapshots congelados e ciclo completo de uma tentativa, com resultado consumido uma única vez e novas instâncias para repetição/variação/reinício.
+- **Arquivos relevantes:** `src/engine/domain/{configuration,validation,immutable,limits}.ts`, perfil e contratos atualizados; módulos `src/engine/generation`, `src/engine/timing` e `src/engine/session`; [documentação do núcleo inicial](./engine-foundation.md).
+- **Decisões relevantes:** `initial-generator@1.0.0`, padrões `ascending-descending@1.0.0` e `repeated-strum@1.0.0`, inicialmente no nível iniciante. Configuração padrão com 40 notas a 120 BPM; 40–300 BPM permitidos, no máximo 4.096 notas/10 minutos musicais por tentativa, 65.536 entradas, 131.072 julgamentos e 64 interrupções. Contagem de quatro semínimas; espera final pelo julgador limitada a cinco segundos ativos. Os limites são iniciais, sem medição em execução.
+- **Reprodução:** mesmo contexto/semente/versão preserva todos os valores da chart; outro ID identifica cada tentativa. Variação exige nova semente, mas pode preservar as notas de um padrão canônico ou escolher novamente uma máscara de um conjunto finito. Versões não suportadas e charts divergentes são rejeitadas.
+- **Disponibilidade real:** núcleo TypeScript independente da interface. O encerramento recebe um contrato de relatório do futuro julgador; não há cálculo de hits/misses nesta etapa. Sem relatório, o abandono preserva notas não julgadas e métricas indisponíveis. Excesso de recursos ou ausência de conclusão dentro do limite final produzem motivos explícitos de abandono.
+- **Revisão realizada:** somente análise estática manual de contratos, imports, tipos, fórmulas, limites, geração, cópias e transições. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação, preview ou navegador.
+- **Limitações e pendências:** captura/mapeamento na etapa 04, relógio/áudio/calibração da plataforma na etapa 05, julgamento nas etapas 06/08 e integração jogável na etapa 07. Encadeamento automático do treino contínuo, catálogo completo e persistência permanecem nas etapas posteriores. Esta entrega não habilita gameplay na interface existente.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 04, teclado, Gamepad e mapeamento.
 
 ### Etapa 04 — Implementar teclado, Gamepad e mapeamento
 
