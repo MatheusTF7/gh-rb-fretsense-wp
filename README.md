@@ -6,6 +6,8 @@
 
 Treinador procedural para jogos rítmicos de cinco frets, com exercícios adaptativos, análise de timing, identificação de padrões de erro e IA executada localmente no navegador.
 
+O desenvolvimento começou pela definição de contratos e do perfil `fretsense-v1`; a interface ainda é a estrutura inicial do Quasar. Consulte o [plano de desenvolvimento](docs/fretsense-development-plan.md) e as [regras de gameplay](docs/gameplay-rules.md) para acompanhar o escopo e o estado de implementação. A etapa 01 foi revisada somente por análise estática manual.
+
 ## GitHub description
 
 Browser-based procedural five-fret rhythm game trainer with adaptive drills, real-time performance analysis, error pattern detection, and on-device machine learning.
