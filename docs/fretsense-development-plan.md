@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** desenvolvimento iniciado; etapa 01 revisada estaticamente, sem confirmação em execução. Etapas 02–20 pendentes.  
+**Status:** etapas 01–02 revisadas estaticamente, sem confirmação em execução. Etapas 03–20 pendentes.  
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). Ainda precisam ser implementados validação e operações do domínio musical, adaptadores de entrada, relógio, áudio, julgamento, renderização da highway, catálogo, relatórios e persistência. A interface continua sendo a estrutura de exemplo. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. Ainda precisam ser implementados validação e operações do domínio musical, adaptadores de entrada, relógio, áudio, julgamento, renderização da highway, exercícios do catálogo, relatórios e persistência. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -175,18 +175,31 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Adaptar `MainLayout.vue` para início, catálogo, dispositivos, histórico e configurações.
-- [ ] Preparar layout de treino com foco na highway e controles essenciais.
-- [ ] Organizar rotas para `/`, `/train`, `/play`, `/devices`, `/calibration`, `/history`, `/results/:id` e `/settings`; ativar telas conforme a funcionalidade estiver disponível.
-- [ ] Substituir os exemplos do Quasar quando seus usos forem removidos, incluindo `SecondPage`, links e store de exemplo.
-- [ ] Definir tema, espaçamentos e identidade visual das cinco pistas com números/símbolos além das cores.
-- [ ] Adicionar `pt-BR` como idioma inicial proposto, mantendo `en-US` e o esquema de mensagens coerentes.
-- [ ] Criar componentes de feedback, estados vazios e erros recuperáveis, sem mostrar métricas fictícias.
-- [ ] Prever foco visível, navegação por teclado, tamanhos legíveis e organização responsiva para configurações e relatórios.
+- [x] Adaptar `MainLayout.vue` para início, catálogo, dispositivos, histórico e configurações.
+- [x] Preparar layout de treino com foco na highway e controles essenciais.
+- [x] Organizar rotas para `/`, `/train`, `/play`, `/devices`, `/calibration`, `/history`, `/results/:id` e `/settings`; ativar telas conforme a funcionalidade estiver disponível.
+- [x] Substituir os exemplos do Quasar quando seus usos forem removidos, incluindo `SecondPage`, links e store de exemplo.
+- [x] Definir tema, espaçamentos e identidade visual das cinco pistas com números/símbolos além das cores.
+- [x] Adicionar `pt-BR` como idioma inicial proposto, mantendo `en-US` e o esquema de mensagens coerentes.
+- [x] Criar componentes de feedback, estados vazios e erros recuperáveis, sem mostrar métricas fictícias.
+- [x] Prever foco visível, navegação por teclado, tamanhos legíveis e organização responsiva para configurações e relatórios.
 
 **Entregáveis:** layouts, rotas, estilos e mensagens de interface.
 
 **Critério de conclusão:** a navegação leva aos recursos disponíveis e preserva contexto; funcionalidades ainda pendentes não aparecem como operacionais.
+
+**Registro da etapa — 2026-09-07:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** navegação responsiva com seção ativa, layouts principal e de treino, oito rotas previstas e recuperação de rota desconhecida; início do produto, guia de técnicas com busca, páginas informativas e configurações de interface.
+- **Arquivos:** `src/layouts/{MainLayout,TrainingLayout}.vue`, `src/pages`, `src/router/{routes,index}.ts`, `src/router/meta.d.ts`, componentes compartilhados e `src/components/training/FretLegend.vue`, `src/stores/interface.ts`, `src/i18n`, `src/boot/i18n.ts`, `src/App.vue`, `src/css`, `quasar.config.ts`, `index.html` e `public/favicon.svg`.
+- **Decisões relevantes:** idioma inicial `pt-BR`, alternativa `en-US` com esquema compartilhado e tradução do Quasar sincronizada; tema escuro inicial, opção clara/sistema e redução de efeitos. Busca e preferências são mantidas pelo Pinia durante a visita; a interface informa que recarregar restaura os padrões. Os frets têm cor, posição 1–5, letra e nome. Títulos de página, atributo `lang`, salto ao conteúdo e foco após navegação acompanham a interface; o menu móvel contempla abertura, fechamento, Escape pelo Quasar e circulação do foco por teclado.
+- **Disponibilidade real:** catálogo é um guia informativo das oito técnicas do domínio, não um conjunto de exercícios executáveis. Dispositivos/calibração/histórico indicam preparação. `/play` reserva a área de treino e oferece retorno ao catálogo/configurações; `/results/:id` apresenta resultado indisponível com recuperação. Nenhum desses estados gera notas, captura controles ou apresenta métricas fictícias.
+- **Exemplos removidos:** `SecondPage.vue`, `EssentialLink.vue`, `example-store.ts` e logo de exemplo; navegação e favicon da aplicação usam a identidade do Fretsense.
+- **Revisão realizada:** somente análise estática manual de templates, imports, tipos, rotas, traduções, estado e estilos. Não houve execução de testes, lint, formatação automática, build, typecheck, aplicação, preview ou navegador.
+- **Limitações e pendências:** aparência, responsividade e interação ainda não foram confirmadas em execução. Persistência de preferências permanece na etapa 04; captura, calibração, controles de sessão e highway jogável nas etapas 03–08; catálogo procedural na etapa 09; resultados e histórico nas etapas posteriores.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 03, domínio, geração inicial e ciclo da sessão.
 
 ### Etapa 03 — Implementar domínio, geração inicial e ciclo da sessão
 
