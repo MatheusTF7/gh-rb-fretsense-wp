@@ -27,5 +27,5 @@ export default {
   storageLimit: 'The calibration storage limit was reached. Existing adjustments were preserved; the new adjustment was not registered.',
   storageIncompatible: 'Stored calibration data is incompatible and was preserved. Changes apply to this visit only.',
   retry: 'Retry saving calibration', mismatch: 'Select the matching gamepad connection before starting.',
-  pending: 'Playable training is still being prepared. This page calibrates the input reference and previews the pulse.',
+  pending: 'Saved adjustments can now be selected in the practice setup. Runtime accuracy still needs developer confirmation.',
 };

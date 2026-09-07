@@ -28,6 +28,6 @@ const messages: typeof english = {
   storageLimit: 'O limite de calibrações foi atingido. Os ajustes existentes foram preservados; o novo ajuste não foi registrado.',
   storageIncompatible: 'Os dados de calibração armazenados são incompatíveis e foram preservados. Alterações valem apenas nesta visita.',
   retry: 'Tentar salvar calibração novamente', mismatch: 'Selecione a conexão correspondente ao perfil de Gamepad antes de iniciar.',
-  pending: 'O treino jogável continua em preparação. Esta página calibra a referência de entrada e apresenta uma prévia do pulso.',
+  pending: 'Os ajustes salvos agora podem ser selecionados na configuração do treino. A precisão em execução ainda depende de confirmação do desenvolvedor.',
 };
 export default messages;

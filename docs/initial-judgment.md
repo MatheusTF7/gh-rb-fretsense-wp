@@ -6,7 +6,7 @@
 
 `src/engine/judgment/initial-judge.ts` implementa `InitialJudge`, com o perfil `fretsense-v1@1.0.0`: notas simples de strum/tap e acordes de dois ou três frets por strum, sem caudas. O construtor valida o snapshot, suas regras e a chart contra a geração canônica, captura cópias imutáveis e rejeita HOPO ou sustains com `EngineError / unsupported`. Esses recursos continuam na etapa 08; não são avaliados parcialmente nem convertidos silenciosamente em strum.
 
-Os padrões iniciais da etapa 03 continuam delimitando as charts aceitas. Não há importação de charts arbitrárias nem ampliação do catálogo nesta etapa. A interface jogável, sua seleção de articulação e a apresentação dos resultados pertencem à etapa 07.
+Os padrões iniciais da etapa 03 continuam delimitando as charts aceitas. Não há importação de charts arbitrárias nem ampliação do catálogo nesta etapa. A etapa 07 passou a oferecer a interface jogável, seleção das articulações disponíveis e resultado básico.
 
 ## Associação e ordem
 
@@ -65,4 +65,4 @@ Pausa avança somente até o instante de interrupção, processa prazos já venc
 
 ## Próxima integração
 
-A etapa 07 conectará seleção do exercício, entrada, áudio, highway e resultado em memória. O controlador deverá encerrar captura/agendamento imediatamente ao observar conclusão, pausa ou abandono. HOPO, sustains e cenários completos de articulações permanecem na etapa 08. Esta entrega não habilita treino na interface nem demonstra independência de taxa de frames em execução; essa propriedade foi revisada somente na lógica temporal e na ordem dos contratos.
+A etapa 07 conectou seleção do exercício, entrada, áudio, highway e resultado em memória, conforme [treino jogável](./playable-training.md). HOPO, sustains e cenários completos de articulações permanecem na etapa 08. A independência de taxa de frames continua sem confirmação em execução; foi revisada somente na lógica temporal e na ordem dos contratos.

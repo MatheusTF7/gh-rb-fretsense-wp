@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–06 revisadas estaticamente, sem confirmação em execução. Etapas 07–20 pendentes.  
+**Status:** etapas 01–07 revisadas estaticamente, sem confirmação em execução. Etapas 08–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento de strum/tap/acordes sem caudas, métricas e encerramento da sessão julgada, descritos em [julgamento inicial](./initial-judgment.md). Ainda precisam ser implementados integração com a highway, HOPO/sustains, catálogo completo, relatórios na interface e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento de strum/tap/acordes sem caudas, métricas e encerramento da sessão julgada, descritos em [julgamento inicial](./initial-judgment.md). A etapa 07 integrou esses módulos em um primeiro [treino jogável](./playable-training.md), com highway Canvas e resultado básico em memória. Ainda precisam ser implementados HOPO/sustains, catálogo completo, relatórios detalhados e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -348,19 +348,31 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Implementar highway em Canvas 2D com cinco pistas, linha de acerto, notas simples e acordes.
-- [ ] Calcular a posição das notas a partir do tempo restante; velocidade visual e BPM são parâmetros distintos.
-- [ ] Desenhar somente a região necessária, considerando tamanho do Canvas e densidade de pixels.
-- [ ] Exibir frets ativos, contagem inicial, combo, progresso e feedback de timing sem depender apenas de cor.
-- [ ] Integrar um composable controlador da sessão, mantendo o renderer separado do julgador.
-- [ ] Permitir escolher perfil de entrada, usar calibração, selecionar o padrão inicial e configurar BPM, repetições e articulação disponível.
-- [ ] Integrar iniciar, pausar, retomar com contagem, reiniciar e sair, descartando os recursos da sessão anterior.
-- [ ] Ao completar, mostrar notas acertadas/esperadas, precisão, combo e timing básico; permitir repetir o mesmo exercício.
-- [ ] Encaminhar indisponibilidade de dispositivo, áudio ou configuração inválida para uma ação de recuperação.
+- [x] Implementar highway em Canvas 2D com cinco pistas, linha de acerto, notas simples e acordes.
+- [x] Calcular a posição das notas a partir do tempo restante; velocidade visual e BPM são parâmetros distintos.
+- [x] Desenhar somente a região necessária, considerando tamanho do Canvas e densidade de pixels.
+- [x] Exibir frets ativos, contagem inicial, combo, progresso e feedback de timing sem depender apenas de cor.
+- [x] Integrar um composable controlador da sessão, mantendo o renderer separado do julgador.
+- [x] Permitir escolher perfil de entrada, usar calibração, selecionar o padrão inicial e configurar BPM, repetições e articulação disponível.
+- [x] Integrar iniciar, pausar, retomar com contagem, reiniciar e sair, descartando os recursos da sessão anterior.
+- [x] Ao completar, mostrar notas acertadas/esperadas, precisão, combo e timing básico; permitir repetir o mesmo exercício.
+- [x] Encaminhar indisponibilidade de dispositivo, áudio ou configuração inválida para uma ação de recuperação.
 
 **Entregáveis:** página de treino, renderer, componentes de gameplay e resultado básico em memória.
 
 **Critério de conclusão:** o fluxo implementado conecta seleção de entrada, configuração, tentativa e resultado para teclado e Gamepad. Confirmação em hardware e navegador fica com o desenvolvedor.
+
+#### Registro da etapa 07 — 2026-09-07
+
+- **Estado:** implementação concluída e revisada estaticamente; M1 concluído no código.
+- **Tarefas entregues:** configuração dos dois padrões iniciais, strum/tap/acordes, perfil e conexão de entrada, calibração salva ou padrão, metrônomo/silêncio, contagem, highway Canvas, feedback, controles de ciclo e resultado básico em memória.
+- **Arquivos relevantes:** `src/rendering`, `src/components/training/TrainingHighway.vue`, `src/composables/useTrainingSession.ts`, `src/pages/{PlayPage,CatalogPage}.vue`, integração de sessão/entrada, estilos e mensagens `en-US`/`pt-BR`. Contratos de uso em [treino jogável](./playable-training.md).
+- **Decisões relevantes:** velocidade visual fixa de 300 px/s, independente do BPM; busca binária limita o desenho ao intervalo visível; densidade do Canvas limitada a 2. A fronteira de entrada abre `running` no prazo da contagem sem antecipar o horizonte do julgador, preservando o ataque do tick zero. O resultado não é persistido; repetir conserva configuração e semente determinística, mas cria nova tentativa.
+- **Recuperação e recursos:** falhas de áudio oferecem modo silencioso; perfil/conexão e calibração apontam para suas telas. Reiniciar descarta frame, captura, metrônomo e `AudioContext` da tentativa anterior; sair ou desmontar também encerra a descoberta periódica de Gamepads.
+- **Revisão realizada:** somente análise estática manual de templates, tipos, imports, estados, transições, timestamps e descarte. Não foram executados testes, lint, formatação, build, typecheck, aplicação ou navegador.
+- **Limitações e pendências:** funcionamento visual, áudio, timing e hardware não foram confirmados em execução. HOPO/sustains seguem na etapa 08; catálogo/avaliação completos, diagnóstico e persistência seguem nas etapas posteriores.
+- **Confirmação/erros informados pelo desenvolvedor:** foram relatados e corrigidos três diagnósticos estáticos: alias de `this` na captura exclusiva, associação do rótulo acessível do highway e ausência de `sinkId` no tipo padrão de `AudioContext`. Ainda não houve confirmação do fluxo em execução.
+- **Próxima etapa liberada:** etapa 08, articulações e sustains.
 
 ### Etapa 08 — Completar articulações e sustains
 

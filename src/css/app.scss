@@ -13,6 +13,11 @@
   --fs-info-text: #234a64;
   --fs-error-bg: #fbecef;
   --fs-error-text: #8a2033;
+  --fs-highway: #17202a;
+  --fs-highway-lane: #202c38;
+  --fs-highway-line: #e7eef5;
+  --fs-highway-text: #f5f7fa;
+  --fs-highway-muted: #b8c4cf;
 }
 
 body.body--dark {
@@ -30,6 +35,11 @@ body.body--dark {
   --fs-info-text: #c1daed;
   --fs-error-bg: #3c222b;
   --fs-error-text: #ffb8c6;
+  --fs-highway: #0d1219;
+  --fs-highway-lane: #151d27;
+  --fs-highway-line: #e7eef5;
+  --fs-highway-text: #f5f7fa;
+  --fs-highway-muted: #b8c4cf;
 }
 
 // As cores são acompanhadas por números, letras e nomes em FretLegend.

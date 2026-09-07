@@ -53,7 +53,7 @@ O contexto de áudio é criado/retomado por gesto explícito. A ativação tem e
 
 Ao retomar entre beats, a contagem permanece regular e a continuação aguarda a fração restante até o próximo beat da chart, preservando seu acento. O coordenador precisa iniciar o agendamento durante a contagem; se não houver mais pulso de preparação futuro, o vínculo pausa e exige novo início explícito.
 
-Mudanças conhecidas de saída ou taxa de amostragem incompatível com o snapshot exigem outra tentativa. Suspensão ou atraso de agendamento pausa a sessão e notifica o coordenador para limpar a captura. O coordenador deve encaminhar interrupções dos adaptadores para `synchronize` no mesmo fluxo e descartar o vínculo ao concluir/sair. O julgador inicial já está disponível no núcleo; a integração com áudio e highway na área jogável permanece na etapa 07.
+Mudanças conhecidas de saída ou taxa de amostragem incompatível com o snapshot exigem outra tentativa. Suspensão ou atraso de agendamento pausa a sessão e notifica o coordenador para limpar a captura. O coordenador encaminha interrupções dos adaptadores para `synchronize` no mesmo fluxo e descarta o vínculo ao concluir/sair. A etapa 07 integrou o julgador, áudio e highway na [área jogável](./playable-training.md).
 
 Na página de calibração, listeners de foco, visibilidade, conexão e mudanças de dispositivos interrompem a rodada. Saída não identificável tem ID `null` e aviso explícito; a confirmação atual não é persistida. O navegador pode não reportar todas as mudanças de saída, por isso a descrição e a conferência pelo usuário continuam relevantes. O frame da prévia, o intervalo de descoberta, a cauda visual, a captura e o contexto são descartados ao sair da rota.
 
@@ -69,4 +69,4 @@ Falhas de gravação mantêm dados em memória e oferecem nova tentativa de salv
 
 ## Limitações da entrega
 
-O código implementa calibração e referências temporais; não demonstra precisão medida nem equivalência de latência entre navegadores/dispositivos. A estimativa guiada é limitada à janela de ±250 ms para evitar ambiguidade entre pulsos; valores maiores podem ser configurados manualmente dentro do limite de ±1.000 ms. A integração jogável do julgador e da highway ainda será implementada. Toda revisão feita pelo agente foi estática e manual, conforme `AGENTS.md`.
+O código implementa calibração e referências temporais; não demonstra precisão medida nem equivalência de latência entre navegadores/dispositivos. A estimativa guiada é limitada à janela de ±250 ms para evitar ambiguidade entre pulsos; valores maiores podem ser configurados manualmente dentro do limite de ±1.000 ms. A integração jogável está implementada, mas sua precisão prática continua sem confirmação. Toda revisão feita pelo agente foi estática e manual, conforme `AGENTS.md`.

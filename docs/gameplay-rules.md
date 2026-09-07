@@ -1,7 +1,7 @@
 # Regras de gameplay do Fretsense
 
 **Perfil:** `fretsense-v1` · **Versão:** `1.0.0` · **Registro:** 2026-09-07.  
-**Estado:** especificação, contratos, núcleo inicial, adaptadores, relógio/áudio/calibração e julgamento inicial revisados por análise estática manual. A etapa 06 implementa strum/tap/acordes sem caudas; integração jogável e HOPO/sustains permanecem nas etapas 07–08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo está descrito em [núcleo inicial](./engine-foundation.md), [entrada e preferências](./input-and-preferences.md), [relógio e calibração](./timing-and-calibration.md) e [julgamento inicial](./initial-judgment.md), sem confirmação em execução.
+**Estado:** especificação, contratos, núcleo inicial, adaptadores, relógio/áudio/calibração, julgamento inicial e integração jogável revisados por análise estática manual. As etapas 06–07 implementam strum/tap/acordes sem caudas e o primeiro treino; HOPO/sustains permanecem na etapa 08 do [plano de desenvolvimento](./fretsense-development-plan.md). O escopo está descrito em [núcleo inicial](./engine-foundation.md), [entrada e preferências](./input-and-preferences.md), [relógio e calibração](./timing-and-calibration.md), [julgamento inicial](./initial-judgment.md) e [treino jogável](./playable-training.md), sem confirmação em execução.
 
 Este é um perfil próprio de treinamento, sem equivalência declarada com versões de Guitar Hero, Rock Band ou outros jogos. Seus números são decisões iniciais do produto, não medições de hardware. A referência em código é [`FRETSENSE_V1_RULE_PROFILE`](../src/engine/domain/rules.ts).
 

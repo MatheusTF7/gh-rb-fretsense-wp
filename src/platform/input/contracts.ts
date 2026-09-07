@@ -36,7 +36,7 @@ export interface AdapterOptions extends InputCallbacks {
   readonly timeline: InputTimeline;
   readonly gamepad?: GamepadConnection;
   /** Permite ao vínculo de sessão suprimir ataques durante contagem/pausa. */
-  readonly getMode?: () => 'baseline' | 'events';
+  readonly getMode?: (observedAtMs: number) => 'baseline' | 'events';
   readonly canStart?: () => boolean;
   /** Continuação da mesma tentativa após substituir um adaptador desconectado. */
   readonly sequenceStart?: number;

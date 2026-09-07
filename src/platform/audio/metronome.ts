@@ -45,7 +45,9 @@ export class Metronome {
     return this.context?.sampleRate ?? null;
   }
   get outputId(): string | null {
-    const sink = this.context?.sinkId;
+    const context = this.context;
+    if (!context || !('sinkId' in context)) return null;
+    const sink = context.sinkId;
     return typeof sink === 'string' && sink.length > 0 && sink.length <= 256 ? sink : null;
   }
 

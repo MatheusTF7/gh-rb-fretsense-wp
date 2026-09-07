@@ -32,11 +32,22 @@
       <article v-for="technique in visibleTechniques" :key="technique.id" class="surface-card technique-card">
         <div class="card-topline">
           <q-icon :name="technique.icon" class="card-icon" aria-hidden="true" />
-          <span class="status-tag status-tag--subtle">{{ t('common.planned') }}</span>
+          <span class="status-tag" :class="{ 'status-tag--subtle': !availableTechniques.has(technique.id) }">
+            {{ t(availableTechniques.has(technique.id) ? 'common.available' : 'common.planned') }}
+          </span>
         </div>
         <h2>{{ t(`techniques.${technique.id}.title`) }}</h2>
         <p>{{ t(`techniques.${technique.id}.description`) }}</p>
         <p class="technique-focus">{{ t(`techniques.${technique.id}.focus`) }}</p>
+        <q-btn
+          v-if="availableTechniques.has(technique.id)"
+          flat
+          no-caps
+          class="card-link"
+          :to="{ name: 'play' }"
+          :label="t('play.start')"
+          icon-right="arrow_forward"
+        />
       </article>
     </div>
     <PageState v-else icon="search_off" :title="t('catalog.emptyTitle')" :description="t('catalog.emptyDescription')">
@@ -69,6 +80,7 @@ const techniques: readonly { id: Technique; icon: string }[] = [
   { id: 'sustains', icon: 'horizontal_rule' },
   { id: 'mixed', icon: 'shuffle' },
 ];
+const availableTechniques = new Set<Technique>(['single-strum', 'tapping', 'sequences', 'chords']);
 
 function normalizeSearch(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();

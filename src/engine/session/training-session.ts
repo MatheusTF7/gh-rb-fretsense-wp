@@ -27,6 +27,7 @@ export interface SessionView {
   readonly sessionId: string | null;
   readonly activeTimeMs: number;
   readonly countdownRemainingMs: number;
+  readonly activeFrets: FretMask;
   readonly inputCount: number;
   readonly result: SessionResult | null;
 }
@@ -66,7 +67,7 @@ export class TrainingSession {
   getView(): SessionView {
     return Object.freeze({ state: this.state, sessionId: this.snapshot?.id ?? null,
       activeTimeMs: this.activeTimeMs, countdownRemainingMs: this.countdownRemainingMs,
-      inputCount: this.inputs.size, result: this.result });
+      activeFrets: this.activeFrets, inputCount: this.inputs.size, result: this.result });
   }
 
   getInputs(): readonly NormalizedInputEvent[] { return this.inputs.snapshot(); }
@@ -110,6 +111,25 @@ export class TrainingSession {
     return this.getView();
   }
 
+  /**
+   * Abre a janela musical quando uma entrada chega na borda da contagem,
+   * sem avançar o horizonte do julgador antes de entregar esse evento.
+   */
+  openInputWindow(observedAtMs: number): boolean {
+    if (this.state === 'running') return true;
+    if (this.state !== 'countdown') return false;
+    let now: number;
+    try {
+      now = this.acceptClock(observedAtMs);
+    } catch (error) {
+      if (error instanceof EngineError && error.code === 'invalid-clock') {
+        this.enterPause('input-timing-invalid');
+      }
+      throw error;
+    }
+    return this.finishCountdown(now);
+  }
+
   /** Avança apenas quando chamado pelo coordenador, usando a fonte monotônica injetada. */
   advance(): SessionView {
     return this.advanceTime(true);
@@ -125,14 +145,7 @@ export class TrainingSession {
       this.enterPause('input-timing-invalid');
       return this.getView();
     }
-    if (this.countdownEndsAtMs !== null) {
-      this.countdownRemainingMs = Math.max(0, this.countdownEndsAtMs - now);
-      if (now < this.countdownEndsAtMs) return this.getView();
-      this.closeInterruption();
-      this.runningSinceMs = this.countdownEndsAtMs;
-      this.countdownEndsAtMs = null;
-      this.state = 'running';
-    }
+    if (this.countdownEndsAtMs !== null && !this.finishCountdown(now)) return this.getView();
     if (this.runningSinceMs !== null) {
       this.activeTimeMs = Math.min(this.hardStopMs, this.accumulatedMs + now - this.runningSinceMs);
       if (this.judge) {
@@ -329,6 +342,18 @@ export class TrainingSession {
     this.state = 'countdown';
   }
 
+  private finishCountdown(now: number): boolean {
+    const deadline = this.countdownEndsAtMs;
+    if (deadline === null) return this.state === 'running';
+    this.countdownRemainingMs = Math.max(0, deadline - now);
+    if (now < deadline) return false;
+    this.closeInterruption();
+    this.runningSinceMs = deadline;
+    this.countdownEndsAtMs = null;
+    this.state = 'running';
+    return true;
+  }
+
   private enterPause(reason: InterruptionReason): void {
     if (this.state === 'paused' || this.result !== null) return;
     // Outra pausa durante a contagem de retomada continua a mesma interrupção.
@@ -400,7 +425,10 @@ export class TrainingSession {
   }
 
   private readClock(): number {
-    const now = this.services.clock.nowMs();
+    return this.acceptClock(this.services.clock.nowMs());
+  }
+
+  private acceptClock(now: number): number {
     if (!Number.isFinite(now) || now < 0 || now > Number.MAX_SAFE_INTEGER - 1_000_000
       || (this.lastClockMs !== null && now < this.lastClockMs)) {
       throw new EngineError('invalid-clock', 'clock.nowMs', 'Clock must be finite and monotonic.');

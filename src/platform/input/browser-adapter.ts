@@ -4,11 +4,11 @@ import type { DeviceProfile, FretMask, InputControl, NormalizedInputEvent } from
 import { validateMapping, controlId } from './mapping';
 import type { AdapterOptions, InputAdapter, InputInterruption } from './contracts';
 
-let owner: BrowserInputAdapter | null = null;
 let keyboardConnection = 0;
 
 /** Uma captura exclusiva, instalada somente por ação explícita no escopo focável. */
 export class BrowserInputAdapter implements InputAdapter {
+  private static owner: BrowserInputAdapter | null = null;
   readonly profile: DeviceProfile;
   private active = false;
   private disposed = false;
@@ -46,8 +46,8 @@ export class BrowserInputAdapter implements InputAdapter {
     if (!this.available || document.hidden || !document.hasFocus() || this.options.canStart?.() === false) {
       this.options.onInterrupt('unavailable'); return;
     }
-    owner?.interrupt('context-changed');
-    owner = this;
+    BrowserInputAdapter.owner?.interrupt('context-changed');
+    BrowserInputAdapter.owner = this;
     this.clear();
     this.active = true;
     this.options.scope.focus({ preventScroll: true });
@@ -85,7 +85,7 @@ export class BrowserInputAdapter implements InputAdapter {
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
     window.removeEventListener('gamepaddisconnected', this.disconnected);
-    if (owner === this) owner = null;
+    if (BrowserInputAdapter.owner === this) BrowserInputAdapter.owner = null;
     this.clear();
   }
 
@@ -209,7 +209,7 @@ export class BrowserInputAdapter implements InputAdapter {
     if (pause) { this.interrupt('user-pause'); return; }
     const previousMask = this.mask;
     this.mask = nextMask as FretMask;
-    if (baseline || (this.options.getMode?.() ?? this.mode) === 'baseline') { this.options.onBaseline(this.mask); return; }
+    if (baseline || (this.options.getMode?.(observedAtMs) ?? this.mode) === 'baseline') { this.options.onBaseline(this.mask); return; }
     if (previousMask === this.mask && strums.length === 0) return;
     let time: number;
     let timeSource: NormalizedInputEvent['timeSource'] = 'observation';

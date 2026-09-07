@@ -1,8 +1,8 @@
 # Núcleo inicial do Fretsense — etapa 03
 
-**Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. Este núcleo ainda não está conectado à interface jogável. A etapa 06 acrescentou julgamento opcional de strum/tap/acordes sem caudas. As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
+**Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. A etapa 07 conectou este núcleo ao primeiro [treino jogável](./playable-training.md). A etapa 06 acrescentou julgamento opcional de strum/tap/acordes sem caudas. As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
 
-Este documento registra a fundação da etapa 03. A etapa 04 acrescentou os adaptadores e o vínculo de entrada descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou a projeção temporal da sessão, normalização de timestamps, áudio e calibração descritos em [relógio e calibração](./timing-and-calibration.md); a integração jogável continua pendente.
+Este documento registra a fundação da etapa 03. A etapa 04 acrescentou os adaptadores e o vínculo de entrada descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou a projeção temporal da sessão, normalização de timestamps, áudio e calibração descritos em [relógio e calibração](./timing-and-calibration.md); a etapa 07 integrou esses recursos na área jogável.
 
 ## Módulos e contratos
 
@@ -68,6 +68,7 @@ Os valores estão centralizados em `ENGINE_LIMITS` e são decisões de implement
 | `enableInitialJudgment` | Em `ready`, ativa o julgador de strum/tap sem caudas e rejeita escopo ainda não suportado |
 | `start` | De `ready` para `countdown` |
 | `advance` | Atualiza contagem/tempo ativo; ao acabar a contagem passa a `running`, preservando atraso entre chamadas |
+| `openInputWindow` | Na borda da contagem, passa a `running` pelo instante observado sem avançar o julgador antes da entrada |
 | `pause` | De `countdown`/`running` para `paused`, congela o tempo e limpa o estado transitório de entrada |
 | `resume` | De `paused` para nova contagem, exclusivamente por chamada explícita |
 | `complete` | Encerra `running` depois do limite musical e de relatório com todas as notas/caudas resolvidas |
