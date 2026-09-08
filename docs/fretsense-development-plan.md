@@ -44,7 +44,7 @@ A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil d
 | M1 — Primeiro treino jogável | 01–07 | Mapear teclado ou Gamepad, calibrar, executar uma sequência de cinco frets e receber resultado básico |
 | M2 — Catálogo e avaliação | 08–11 | Praticar todas as famílias principais com níveis, configurações reproduzíveis e diagnóstico por cenário |
 | M3 — Treinador completo local | 12–14 | Salvar sessões, consultar evolução e receber sugestões corretivas explicáveis |
-| M4 — Primeira versão preparada para entrega | 15–16 | Consolidar acessibilidade, tratamento de falhas, documentação e encaminhamento ao desenvolvedor |
+| M4 — Primeira versão preparada para entrega | 15A, 15B e 16 | Refinar a experiência de jogo e consolidar acessibilidade, desempenho, tratamento de falhas e documentação |
 | Expansões | 17–20 | WebHID, PWA, perfis específicos e recursos opcionais avançados |
 
 A execução padrão segue a numeração. Dependências na tabela abaixo indicam o que deve estar disponível antes de iniciar a etapa, mesmo se a ordem for ajustada futuramente.
@@ -65,11 +65,12 @@ A execução padrão segue a numeração. Dependências na tabela abaixo indicam
 | 12. Persistência e histórico de sessões | 10, 11 | Dados locais |
 | 13. Adaptação e progressão | 09, 11, 12 | Treino adaptativo |
 | 14. Relatórios e evolução | 11, 12, 13 | M3 |
-| 15. Robustez, desempenho e acessibilidade | 14 | Consolidação |
-| 16. Documentação e preparação de entrega | 15 | M4 |
-| 17. WebHID | 04, 15, 16 | Expansão |
-| 18. PWA e offline | 12, 15, 16 | Expansão |
-| 19. Perfis específicos de gameplay | 08, 09, 11, 16 | Expansão |
+| 15A. Highway e tela de jogo | 14 | Consolidação visual |
+| 15B. Robustez, desempenho e acessibilidade | 15A | Consolidação técnica |
+| 16. Documentação e preparação de entrega | 15A, 15B | M4 |
+| 17. WebHID | 04, 15B, 16 | Expansão |
+| 18. PWA e offline | 12, 15B, 16 | Expansão |
+| 19. Perfis específicos de edição, gameplay e apresentação | 08, 09, 11, 15A, 15B, 16 | Expansão |
 | 20. IA local e integrações opcionais | 12, 13, 16 | Expansão |
 
 ## 4. Arquitetura proposta
@@ -92,7 +93,8 @@ src/
     input/           # Adaptadores de teclado, Gamepad e futuro WebHID
     audio/           # Relógio do navegador, metrônomo e efeitos
     storage/         # Preferências, perfis, sessões e migrações
-  rendering/         # Renderer Canvas da highway
+  rendering/         # Projeção, perfis visuais e backend Canvas da highway
+  game-profiles/     # Perfis pesquisados de edição, regras e apresentação
   catalog/           # Presets e descritores de técnicas/níveis
   composables/       # Integração Vue com sessão, dispositivos e áudio
   stores/            # Estado de interface, preferências e resumos
@@ -109,12 +111,12 @@ src/
 
 ### Responsabilidades e fluxo de dados
 
-1. A interface monta uma configuração válida e seleciona um perfil de regras.
+1. A interface monta uma configuração válida e seleciona perfis versionados de regras e apresentação, diretamente ou por um perfil de edição.
 2. O gerador transforma configuração e semente em notas esperadas, com identificadores estáveis.
-3. A sessão captura uma cópia imutável da configuração, chart, regras e calibração.
+3. A sessão captura uma cópia imutável da configuração, chart, regras, apresentação e calibração.
 4. Os adaptadores entregam ações normalizadas e timestamps convertidos para a linha de tempo da sessão.
 5. O motor julga as ações e a passagem do tempo, produzindo resultados e eventos.
-6. A highway lê o estado do motor e o relógio; seu desenho não decide acertos.
+6. A highway lê o estado do motor, o relógio e o perfil de apresentação; seu desenho não decide acertos nem altera janelas.
 7. A análise usa registros da tentativa para produzir métricas e diagnósticos.
 8. A persistência salva a tentativa; a adaptação propõe a configuração da próxima.
 
@@ -127,10 +129,13 @@ Vue e Pinia recebem snapshots e resumos na frequência necessária para a interf
 | `ChartNote` | ID, posição em ticks musicais, máscara de frets, duração, articulação e trecho/técnica de origem |
 | `DrillConfig` | Técnica, nível, BPM, subdivisão, frets, tamanho, repetições, metas e semente |
 | `RuleProfile` | ID e versão, janelas temporais, política de frets, HOPO/tap, acordes, sustains e direção de strum |
+| `HighwayPresentationProfile` | ID/versão, projeção, geometria das pistas, velocidade visual, formas de notas/caudas, marcadores rítmicos, efeitos e tokens do HUD |
+| `GameReferenceStudy` | ID/versão, jogo/edição/plataforma/revisão estudados, fontes, método, medições, confiança, conflitos e lacunas conhecidas |
+| `GameEditionProfile` | Jogo, edição/plataforma pesquisada, estado da evidência e referências compatíveis de regras, apresentação e catálogo |
 | `NormalizedInputEvent` | Ordem sequencial, tempo de sessão, frets ativos/pressionados/liberados, strum e origem |
 | `DeviceProfile` | Identidade de perfil, mapeamento, capacidades e referências de calibração |
 | `CalibrationProfile` | Offsets com unidade e sinal definidos, dispositivo, saída de áudio identificável e contexto da calibração |
-| `SessionSnapshot` | ID, modo, configuração, notas geradas, versões do gerador/regras e calibração usada |
+| `SessionSnapshot` | ID, modo, configuração, notas geradas, versões do gerador/regras/apresentação, perfil de edição opcional e calibração usada |
 | `JudgmentEvent` | Nota associada quando houver, resultado, erro temporal, causa e efeito no combo |
 | `SessionResult` | Estado final, duração ativa, métricas, interrupções, diagnósticos e disponibilidade de dados |
 | `TrainingRecommendation` | Evidência, objetivo, alteração proposta e configuração resultante |
@@ -512,7 +517,7 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 - [ ] Criar repositórios com contratos separados da implementação de armazenamento.
 - [ ] Manter preferências e perfis pequenos no armazenamento versionado da etapa 04; usar IndexedDB para sessões, charts e resultados.
 - [ ] Definir versões de esquema, migrações e tratamento de dados antigos ou incompatíveis sem apagar histórico silenciosamente.
-- [ ] Persistir snapshot, chart realizada, regras/gerador, calibração, dispositivo/capacidades, métricas e estado final.
+- [ ] Persistir snapshot, chart realizada, regras/gerador, apresentação/edição, calibração, dispositivo/capacidades, métricas e estado final.
 - [ ] Salvar cada tentativa por ID de forma idempotente e manter gravações grandes fora do caminho de julgamento.
 - [ ] Definir retenção e limites para eventos brutos; guardar resumo e informar quando diagnóstico/reprodução detalhada não estiver mais disponível.
 - [ ] Diferenciar replay do exercício de replay da execução; não oferecer replay da execução sem os eventos necessários.
@@ -553,11 +558,11 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 **Tarefas:**
 
 - [ ] Organizar relatório com resumo, timing, frets, transições, acordes, strum, sustains e recomendações aplicáveis.
-- [ ] Exibir no resultado técnica/nível, BPM, regra usada, dispositivo, calibração e condição da tentativa.
+- [ ] Exibir no resultado técnica/nível, BPM, regra e apresentação usadas, edição opcional, dispositivo, calibração e condição da tentativa.
 - [ ] Criar distribuição de timing e mapa de erros do padrão com representação textual/tabelada equivalente.
 - [ ] Separar resultados por técnica e trecho em exercícios mistos.
 - [ ] Criar histórico filtrável por período, família, nível, modo e condição de conclusão.
-- [ ] Comparar apenas grupos compatíveis ou exibir claramente as diferenças de BPM, chart, regra, janela e calibração.
+- [ ] Comparar apenas grupos compatíveis ou exibir claramente as diferenças de BPM, chart, regra, janela, apresentação, edição e calibração.
 - [ ] Mostrar evolução e limites de BPM a partir de tentativas registradas com amostras suficientes; não extrapolar habilidade a partir de uma única sessão.
 - [ ] Permitir abrir uma sessão, repetir sua chart salva ou criar treino focado em um problema identificado.
 - [ ] Distinguir dado inexistente, amostra insuficiente e técnica não avaliada de desempenho igual a zero.
@@ -566,9 +571,32 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Critério de conclusão:** o usuário consegue localizar uma dificuldade, entender sua evidência, comparar sessões compatíveis e iniciar uma ação de treino relacionada.
 
-### Etapa 15 — Consolidar robustez, desempenho e acessibilidade
+### Etapa 15A — Refinar a highway e a tela de jogo
 
-**Objetivo:** revisar os caminhos de falha e a manutenção dos recursos ao longo do uso.
+**Objetivo:** transformar o primeiro renderer funcional em uma experiência de jogo legível e expressiva, próxima da linguagem visual de jogos de cinco frets, sem acoplar desenho e julgamento nem copiar recursos proprietários.
+
+**Tarefas:**
+
+- [ ] Manter Vue/Quasar e DOM para HUD, configuração, pausa, mensagens e controles acessíveis; reservar Canvas para a highway e efeitos de gameplay que realmente se beneficiam do desenho por frame.
+- [ ] Extrair um contrato de backend de renderização com ciclo explícito de preparação, redimensionamento, desenho e descarte. Manter Canvas 2D como backend inicial e impedir dependência do motor de julgamento em Canvas, PixiJS ou outra biblioteca visual.
+- [ ] Criar `HighwayPresentationProfile` versionado para projeção plana/perspectiva, espaçamento e profundidade das pistas, posição da linha de acerto, velocidade visual, formas de notas, caudas, marcadores de tempo, feedback e tokens visuais do HUD.
+- [ ] Redesenhar a highway com perspectiva e profundidade coerentes, grade rítmica/linhas de compasso, separação clara das cinco pistas, linha de acerto dominante e escala de notas que preserve leitura em diferentes dimensões.
+- [ ] Diferenciar strum, HOPO, tap, acordes, sustains, direções e estados resolvidos por forma, contorno, símbolo e movimento, nunca apenas por cor; evitar que caudas ou efeitos ocultem notas seguintes.
+- [ ] Acrescentar feedback visual limitado para acerto, antecipação, atraso, miss, strum extra, quebra/conclusão de sustain e ativação dos frets, com prioridade visual definida e alternativa com movimento reduzido.
+- [ ] Reorganizar a tela de jogo para dar protagonismo à highway: HUD compacto para combo, progresso, BPM e estado; controles secundários recolhíveis; contagem e pausa como camadas claras; modo de foco/tela cheia quando suportado, sempre com saída visível.
+- [ ] Adaptar a composição para desktop, telas estreitas e diferentes proporções sem comprimir pistas, cobrir a linha de acerto ou reposicionar controles essenciais durante uma tentativa.
+- [ ] Permitir ajustar velocidade visual separadamente do BPM, escala/contraste da highway e intensidade de efeitos. Mudanças puramente visuais não alteram ticks, janelas, julgamento, calibração ou comparabilidade musical.
+- [ ] Cachear estilos, textos e primitivas repetidas; considerar camadas/offscreen canvas para fundo e grade; reutilizar objetos de efeitos; manter busca/culling das notas visíveis e evitar leituras de layout ou alocações desnecessárias por frame.
+- [ ] Manter o renderer Canvas enquanto atender aos cenários confirmados. Avaliar PixiJS ou backend GPU somente diante de requisito concreto de sprites, filtros, partículas, meshes/shaders ou evidência do desenvolvedor de que o Canvas otimizado não atende ao frame budget nos dispositivos-alvo.
+- [ ] Definir roteiro de avaliação visual pelo desenvolvedor com capturas em resoluções-alvo, charts densas, sustains/acordes, temas, redução de movimento e sessões prolongadas; registrar achados sem o agente afirmar desempenho medido.
+
+**Entregáveis:** contrato e perfil versionado de apresentação, highway e tela de jogo refinadas, preferências visuais e roteiro de avaliação. O detalhamento está em [plano de highway e tela de jogo](./highway-and-game-ui-plan.md).
+
+**Critério de conclusão:** a highway mantém leitura de notas, timing e estado em todas as dimensões previstas; configurações visuais não mudam o julgamento; o HUD permanece navegável e recuperável. Qualidade visual e desempenho em execução dependem de confirmação do desenvolvedor.
+
+### Etapa 15B — Consolidar robustez, desempenho e acessibilidade
+
+**Objetivo:** revisar os caminhos de falha, o ciclo de vida dos recursos e as garantias de acessibilidade ao longo do uso, incluindo os componentes introduzidos na etapa 15A.
 
 **Tarefas:**
 
@@ -584,9 +612,9 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 - [ ] Documentar capacidades esperadas por entrada/navegador, distinguindo suporte planejado de compatibilidade confirmada pelo desenvolvedor.
 - [ ] Incorporar problemas relatados pelo desenvolvedor e ajustar limites com base nessas evidências, sem declarar latência ou desempenho medidos pelo agente.
 
-**Entregáveis:** tratamento consistente de falhas, recursos revisados e registro de limitações conhecidas.
+**Entregáveis:** tratamento consistente de falhas, recursos revisados, garantias de acessibilidade e registro de limitações conhecidas.
 
-**Critério de conclusão:** a revisão manual não identifica recursos sem descarte, estados sem recuperação ou limitações ocultas. Confirmações práticas de desempenho e compatibilidade permanecem responsabilidade do desenvolvedor.
+**Critério de conclusão:** a revisão manual não identifica recursos sem descarte, estados sem recuperação, caminhos essenciais inacessíveis ou limitações ocultas. Desempenho e compatibilidade em execução dependem de confirmação do desenvolvedor.
 
 ### Etapa 16 — Preparar documentação e entrega da primeira versão
 
@@ -596,8 +624,8 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 - [ ] Atualizar README com funcionalidades realmente disponíveis, navegação e links para regras e plano.
 - [ ] Documentar mapeamento, calibração, modos de treino, interpretação de métricas e recuperação de falhas.
-- [ ] Registrar as versões de esquema, catálogo, gerador e regras usadas na entrega.
-- [ ] Documentar limitações de dispositivos, teclado, precisão observável e diferenças em relação a perfis específicos de GH/RB.
+- [ ] Registrar as versões de esquema, catálogo, gerador, regras, apresentação e perfis de edição usadas na entrega.
+- [ ] Documentar limitações de dispositivos, teclado, precisão observável e diferenças em relação a perfis específicos de jogo/edição, sem declarar fidelidade não estudada.
 - [ ] Consolidar alterações e pendências materiais, separando requisitos implementados, confirmações do desenvolvedor e expansões futuras.
 - [ ] Preparar informações de hospedagem estática e contexto seguro para APIs de dispositivos, mantendo o roteamento hash escolhido.
 - [ ] Encaminhar empacotamento, execução, testes e publicação ao desenvolvedor responsável; o agente não executa essas ações sob as orientações atuais.
@@ -605,7 +633,7 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Entregáveis:** documentação da versão, notas de entrega e pendências atualizadas. Esta etapa conclui M4 do trabalho de implementação.
 
-**Critério de conclusão:** os fluxos das etapas 01–15 estão implementados e descritos, sem pendências essenciais ocultas. O estado de publicação e funcionamento confirmado deve refletir somente o que o desenvolvedor efetivamente informou.
+**Critério de conclusão:** os fluxos das etapas 01–15B estão implementados e descritos, sem pendências essenciais ocultas. O estado de publicação e funcionamento confirmado deve refletir somente o que o desenvolvedor efetivamente informou.
 
 ## 6. Etapas de expansão
 
@@ -631,14 +659,27 @@ As etapas abaixo fazem parte da evolução planejada e não bloqueiam M1–M4. D
 
 **Conclusão:** a implementação contempla instalação, cache e atualização sem perda silenciosa de sessão. Preparação de build, uso offline em execução e publicação ficam com o desenvolvedor.
 
-### Etapa 19 — Adicionar perfis específicos de gameplay
+### Etapa 19 — Adicionar perfis específicos de edição, gameplay e apresentação
 
-- [ ] Selecionar um jogo e versão de referência por vez e documentar suas regras com fontes primárias ou comportamento confirmado pelo responsável.
-- [ ] Implementar variações de HOPO, tapping, ancoragem, acordes, sustains e janelas dentro de perfis versionados.
-- [ ] Declarar o subconjunto de mecânicas atendidas e impedir que resultados de perfis distintos sejam comparados como equivalentes.
-- [ ] Adaptar presets às capacidades do perfil e manter o perfil próprio do Fretsense disponível.
+**Objetivo:** permitir escolher uma experiência baseada em uma edição concreta de um jogo, aplicando de forma explícita e versionada tanto sua apresentação quanto as regras conhecidas de julgamento. Nenhum perfil deve ser criado apenas por semelhança visual ou memória informal.
 
-**Conclusão:** cada perfil declara regras e alcance; equivalência com um jogo não é presumida pelo nome do perfil.
+- [ ] Selecionar um jogo, edição, plataforma/região e versão de software por vez; edições com comportamento diferente recebem identidades distintas em vez de compartilhar um nome genérico.
+- [ ] Produzir antes da implementação um dossiê de referência versionado com escopo, fontes, método de observação, valores medidos, incertezas, conflitos entre fontes e itens ainda não confirmados. Priorizar fontes primárias, material técnico verificável e observações reproduzíveis fornecidas/confirmadas pelo desenvolvedor.
+- [ ] Separar no dossiê fatos confirmados, medições aproximadas e escolhas autorais do Fretsense; não apresentar estimativas como equivalência exata com o jogo estudado.
+- [ ] Criar um `RuleProfile` novo e versionado para cada comportamento confirmado relevante: janela antecipada/tardia, seleção de candidata, fret extra/ancoragem, strum excessivo, HOPO/tap, notas repetidas, acordes, sustains, direção, combo e demais consequências observáveis.
+- [ ] Criar um `HighwayPresentationProfile` independente e versionado para a mesma edição: projeção/câmera, sentido e velocidade aparente, geometria das pistas, linha de acerto, notas, acordes, HOPO/tap, sustains, marcadores rítmicos, estados resolvidos, efeitos e HUD.
+- [ ] Criar `GameEditionProfile` que vincule as referências exatas de regras, apresentação, estudo e catálogo compatível. A interface deve mostrar claramente o jogo/edição pesquisado, versões aplicadas, alcance e nível de confiança.
+- [ ] Oferecer um seletor de experiência antes da tentativa. Escolher uma edição aplica regras e visual em conjunto; um modo avançado pode desvinculá-los, mas deve identificar a combinação como personalizada e não equivalente à edição de referência.
+- [ ] Congelar no `SessionSnapshot` o perfil de edição opcional e cópias/referências exatas dos perfis de regras e apresentação. Trocar edição, regra ou visual estrutural durante a tentativa exige encerrá-la; preferências cosméticas declaradas como neutras podem mudar sem afetar o julgamento.
+- [ ] Validar compatibilidade entre chart, articulações, dispositivo, perfil de regras e apresentação antes do início; recursos não estudados ou não representáveis devem ser bloqueados ou marcados como indisponíveis, nunca completados por suposição silenciosa.
+- [ ] Adaptar presets e relatórios às capacidades do perfil. Resultados só podem ser comparados diretamente quando edição, regra, janela, gerador e demais condições relevantes forem compatíveis.
+- [ ] Preservar `fretsense-v1` e a apresentação própria como padrão integralmente suportado e fallback quando um perfil pesquisado estiver incompleto.
+- [ ] Recriar a linguagem visual com formas, cores e efeitos autorais/configuráveis; não copiar logos, áudio, texturas, modelos ou outros recursos proprietários do jogo de referência.
+- [ ] Encaminhar cada perfil ao desenvolvedor para confirmação prática em cenários documentados. Correções que mudem janela, regra ou significado visual/comparabilidade geram nova versão, sem reescrever sessões anteriores.
+
+**Entregáveis por edição:** dossiê de estudo, `RuleProfile`, `HighwayPresentationProfile`, `GameEditionProfile`, matriz de capacidades/compatibilidade, presets aplicáveis, mensagens da interface e limitações conhecidas.
+
+**Conclusão:** cada edição disponível pode ser rastreada até um estudo prévio; regras e aparência selecionadas ficam visíveis e congeladas na tentativa; o alcance e as incertezas são declarados. Equivalência com um jogo não é presumida pelo nome nem apenas pela semelhança visual.
 
 ### Etapa 20 — Avaliar IA local e integrações opcionais
 
@@ -655,21 +696,24 @@ As etapas abaixo fazem parte da evolução planejada e não bloqueiam M1–M4. D
 
 | Ponto | Tratamento planejado | Etapas |
 | --- | --- | --- |
-| Diferenças entre regras de GH/RB | Perfil próprio explícito, versões e expansão por jogo | 01, 08, 19 |
+| Diferenças entre jogos, edições, plataformas e revisões de GH/RB | Dossiê por edição, perfis versionados de regras/apresentação e incertezas explícitas | 01, 08, 15A, 19 |
+| Visual de uma edição alterar julgamento silenciosamente | Separar `HighwayPresentationProfile` de `RuleProfile` e vinculá-los explicitamente em `GameEditionProfile`/snapshot | 15A, 19 |
+| Uso indevido de identidade ou assets proprietários | Recriar linguagem visual com arte/áudio próprios e documentar referência sem incorporar recursos do jogo | 15A, 16, 19 |
 | Guitarras com botões/eixos diferentes | Mapeamento configurável e capacidades registradas | 04, 17 |
 | Direção de strum indisponível | Avaliar timing e indicar alternância não avaliada | 04, 08, 11 |
 | Limites de acordes no teclado | Visualização das entradas e remapeamento antes do treino | 04 |
-| Entrada obtida por amostragem | Preservar precisão observável; não reconstruir transições que não foram capturadas | 04, 05, 15 |
+| Entrada obtida por amostragem | Preservar precisão observável; não reconstruir transições que não foram capturadas | 04, 05, 15B |
 | Áudio, entrada e imagem fora de sincronia | Relógio comum, calibração e offsets com aplicação única | 05 |
-| Pausa ou aba em segundo plano | Limpeza de entrada, contagem de retomada e condição da avaliação registrada | 03, 05, 10, 15 |
+| Pausa ou aba em segundo plano | Limpeza de entrada, contagem de retomada e condição da avaliação registrada | 03, 05, 10, 15B |
 | Julgamento e diagnóstico divergentes | Manter resultado original e análise posterior separados | 06, 11 |
 | Histórico não comparável | Guardar snapshot e filtrar/destacar diferenças de condições | 10, 12, 14 |
 | Gravação local indisponível | Modo em memória, status de gravação e exportação | 12 |
 | Adaptação baseada em poucos dados | Amostras mínimas, estabilidade de progressão e evidência visível | 11, 13 |
-| Processamento pesado durante gameplay | Trabalho limitado, análise entre blocos e Worker quando necessário | 11, 15 |
+| Processamento pesado durante gameplay | Trabalho limitado, análise entre blocos e Worker quando necessário | 11, 15A, 15B |
+| Renderer Canvas não atender ao estilo ou desempenho futuro | Otimizar e medir primeiro; preservar contrato de backend e avaliar PixiJS/GPU somente por requisito ou evidência concreta | 15A, 15B, 19 |
 | Confundir botão com mão/dedo | Relatar apenas ações observáveis do dispositivo | 04, 11, 17 |
 
-Parâmetros de tolerância, metas e limites devem ter valores iniciais registrados na etapa correspondente. Refinamentos motivados pelo desenvolvedor devem produzir novas versões quando alterarem o significado das métricas ou a comparabilidade de resultados.
+Parâmetros de tolerância, metas e limites devem ter valores iniciais registrados na etapa correspondente. Refinamentos motivados pelo desenvolvedor devem produzir novas versões quando alterarem o significado das métricas ou a comparabilidade de resultados. Preferências estritamente cosméticas podem permanecer fora da comparação; mudanças de geometria, movimento ou sinalização temporal da highway devem versionar o perfil de apresentação e ficar registradas na sessão.
 
 ## 8. Procedimento para executar e acompanhar cada etapa
 
