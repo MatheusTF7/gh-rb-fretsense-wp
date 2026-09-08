@@ -4,7 +4,7 @@
 
 ## Fluxo disponível
 
-A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado em memória. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de strum, modo de áudio e calibração. O strum automático vem selecionado por padrão para teclado e Gamepad. Estão disponíveis:
+A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado. Ao terminar, a tentativa é encaminhada ao repositório local descrito em [persistência e histórico](./session-persistence.md), sem incluir armazenamento no caminho de julgamento. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de strum, modo de áudio e calibração. O strum automático vem selecionado por padrão para teclado e Gamepad. Estão disponíveis:
 
 - subida/descida de cinco frets por strum ou tap;
 - subida/descida por HOPO, com início e recuperação por strum;
@@ -33,7 +33,7 @@ O renderer ajusta a resolução ao tamanho CSS e limita a densidade a 2. Uma bus
 
 ## Resultado e recuperação
 
-Ao terminar, a página mostra acertos/planejadas, precisão, melhor combo, timing médio, strums extras, conclusão/quebras de sustain, conformidade de direção quando aplicável e duração ativa. Resultados interrompidos são identificados e preservam somente a parte julgada. Repetir conserva a configuração e a semente, gerando a mesma chart com outro ID. O resultado desaparece ao sair da página; persistência pertence à etapa 12.
+Ao terminar, a página mostra acertos/planejadas, precisão, melhor combo, timing médio, strums extras, conclusão/quebras de sustain, conformidade de direção quando aplicável e duração ativa. Resultados interrompidos são identificados e preservam somente a parte julgada. Repetir conserva a configuração e a semente, gerando a mesma chart com outro ID. O resultado permanece no histórico IndexedDB quando a gravação é bem-sucedida; em caso de falha, fica somente na memória da visita e a interface informa essa condição.
 
 Falhas de áudio oferecem modo silencioso. Entrada ausente aponta para mapeamento/conexão, calibração incompatível aponta para recalibração e configuração inválida retorna ao formulário sem iniciar uma tentativa parcial.
 

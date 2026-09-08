@@ -171,6 +171,8 @@
         <p class="muted-text">{{ t(result.ending.state === 'completed' ? 'play.resultDescription' : 'play.abortedDescription') }}</p>
         <FeedbackBanner v-if="snapshot.mode === 'assessment' && !result.progression.eligible" class="q-mt-md"
           tone="error" :message="t('play.assessmentIneligible')" />
+        <FeedbackBanner v-if="history.storageState.mode === 'memory'" class="q-mt-md" tone="error"
+          :message="t(`history.storage.${history.storageState.issue ?? 'memory'}`)" />
         <div class="result-metrics">
           <div><span>{{ t('play.accuracy') }}</span><strong>{{ ratioLabel(result.metrics.noteAccuracy) }}</strong></div>
           <div><span>{{ t('play.hits') }}</span><strong>{{ result.metrics.hitNotes }}/{{ result.metrics.plannedNotes }}</strong></div>
@@ -217,7 +219,7 @@ const { t } = useI18n();
 const router = useRouter();
 const training = useTrainingSession();
 const {
-  workspace, captureArea, profileId, profile, connectionId, matchingConnections, selectedPreset,
+  workspace, history, captureArea, profileId, profile, connectionId, matchingConnections, selectedPreset,
   technique, level, descriptor, mode, bpm, subdivision, allowedFrets, lengthKind, lengthValue,
   automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts, requireArticulation,
   requireStrumDirection, requireFullSustains, focusSegment, segmentOptions, audioMode, calibrationId,

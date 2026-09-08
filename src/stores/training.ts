@@ -14,7 +14,7 @@ export interface TrainingDraftContext {
   readonly calibrationId: string | null;
 }
 
-/** Workspace transitório da etapa 10. Persistência e histórico pertencem à etapa 12. */
+/** Workspace transitório da tentativa atual; o histórico durável fica no repositório de sessões. */
 export const useTrainingStore = defineStore('training', {
   state: () => ({
     draftConfig: null as DrillConfig | null,
@@ -34,6 +34,9 @@ export const useTrainingStore = defineStore('training', {
     saveResult(snapshot: SessionSnapshot, result: SessionResult) {
       requireCondition(snapshot.id === result.sessionId, 'training.result', 'Result belongs to another snapshot.');
       this.latestRecord = immutableCopy({ snapshot, result });
+    },
+    discardResult(id: string) {
+      if (this.latestRecord?.snapshot.id === id) this.latestRecord = null;
     },
     setRecommendation(value: TrainingRecommendation | null) {
       this.recommendation = value === null ? null : immutableCopy(value);

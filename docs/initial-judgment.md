@@ -64,7 +64,7 @@ Após `prepare`, ainda em `ready`, o coordenador chama `session.enableInitialJud
 
 Pausa avança somente até o instante de interrupção, processa prazos já vencidos e congela a sessão, sem concluir automaticamente por essa chamada. Durante pausa/contagem não há novos julgamentos. A retomada sincroniza frets sem ataques, preservando combo, notas e sequência. Abandono também processa apenas prazos já vencidos até o encerramento e mantém futuras notas não julgadas; não converte o restante da chart em misses. Os limites de recursos e o timeout continuam podendo produzir seus motivos terminais antes de uma pausa/saída.
 
-`repeat`, `vary` e `restart` preservam a ativação do julgador, mas criam outra instância com outro ID e buffers/contadores novos. Resultados terminais continuam sendo entregues uma única vez. Registros detalhados ficam na instância original; persistência de sessões e histórico permanecem para a etapa 12.
+`repeat`, `vary` e `restart` preservam a ativação do julgador, mas criam outra instância com outro ID e buffers/contadores novos. Resultados terminais continuam sendo entregues uma única vez. Depois do término, a integração da etapa 12 copia os registros elegíveis para o repositório de sessões sem alterar o julgamento original.
 
 ## Próxima integração
 

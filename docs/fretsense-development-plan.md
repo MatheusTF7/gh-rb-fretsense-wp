@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–11 revisadas estaticamente, sem confirmação em execução. Etapas 12–20 pendentes.
+**Status:** etapas 01–12 revisadas estaticamente, sem confirmação em execução. Etapas 13–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. As etapas 09 e 10 entregaram o [catálogo procedural](./procedural-catalog.md) e a [prática/avaliação configuráveis](./practice-and-assessment.md); a etapa 11 acrescentou a [análise detalhada](./detailed-analysis.md). Persistência, histórico e adaptação continuam nas etapas seguintes. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. As etapas 09 e 10 entregaram o [catálogo procedural](./procedural-catalog.md) e a [prática/avaliação configuráveis](./practice-and-assessment.md); a etapa 11 acrescentou a [análise detalhada](./detailed-analysis.md) e a etapa 12, a [persistência e o histórico local](./session-persistence.md). Adaptação e progressão continuam nas etapas seguintes. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -514,21 +514,33 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Criar repositórios com contratos separados da implementação de armazenamento.
-- [ ] Manter preferências e perfis pequenos no armazenamento versionado da etapa 04; usar IndexedDB para sessões, charts e resultados.
-- [ ] Definir versões de esquema, migrações e tratamento de dados antigos ou incompatíveis sem apagar histórico silenciosamente.
-- [ ] Persistir snapshot, chart realizada, regras/gerador, apresentação/edição, calibração, dispositivo/capacidades, métricas e estado final.
-- [ ] Salvar cada tentativa por ID de forma idempotente e manter gravações grandes fora do caminho de julgamento.
-- [ ] Definir retenção e limites para eventos brutos; guardar resumo e informar quando diagnóstico/reprodução detalhada não estiver mais disponível.
-- [ ] Diferenciar replay do exercício de replay da execução; não oferecer replay da execução sem os eventos necessários.
-- [ ] Oferecer listagem paginada/filtros e consulta de detalhes de sessão.
-- [ ] Tratar cota, armazenamento indisponível e falha de migração com modo em memória e indicação de que a sessão não foi salva.
-- [ ] Permitir exportar resultados e configurações em JSON versionado e remover sessões por ação explícita do usuário.
-- [ ] Manter importação de backups como evolução separada, com validação de esquema e tamanho quando implementada.
+- [x] Criar repositórios com contratos separados da implementação de armazenamento.
+- [x] Manter preferências e perfis pequenos no armazenamento versionado da etapa 04; usar IndexedDB para sessões, charts e resultados.
+- [x] Definir versões de esquema, migrações e tratamento de dados antigos ou incompatíveis sem apagar histórico silenciosamente.
+- [x] Persistir snapshot, chart realizada, regras/gerador, apresentação/edição, calibração, dispositivo/capacidades, métricas e estado final.
+- [x] Salvar cada tentativa por ID de forma idempotente e manter gravações grandes fora do caminho de julgamento.
+- [x] Definir retenção e limites para eventos brutos; guardar resumo e informar quando diagnóstico/reprodução detalhada não estiver mais disponível.
+- [x] Diferenciar replay do exercício de replay da execução; não oferecer replay da execução sem os eventos necessários.
+- [x] Oferecer listagem paginada/filtros e consulta de detalhes de sessão.
+- [x] Tratar cota, armazenamento indisponível e falha de migração com modo em memória e indicação de que a sessão não foi salva.
+- [x] Permitir exportar resultados e configurações em JSON versionado e remover sessões por ação explícita do usuário.
+- [x] Manter importação de backups como evolução separada, com validação de esquema e tamanho quando implementada.
 
 **Entregáveis:** persistência local, migrações iniciais, acesso a resultados por ID e histórico básico.
 
 **Critério de conclusão:** resultados preservam o contexto da execução; falhas de armazenamento não interrompem a gameplay nem são apresentadas como gravações bem-sucedidas.
+
+**Registro da etapa — 2026-09-08:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** contrato independente de repositório, IndexedDB versionado com stores separados para detalhes e resumos, migração inicial, fallback em memória, gravação idempotente ao final da tentativa, retenção limitada de eventos, histórico filtrável e paginado, consulta por ID, exportação JSON versionada e exclusão confirmada.
+- **Arquivos:** `src/platform/storage`, `src/stores/history.ts`, integração em `src/composables/useTrainingSession.ts`, páginas `HistoryPage.vue` e `ResultsPage.vue`, mensagens `pt-BR`/`en-US` e [persistência e histórico](./session-persistence.md).
+- **Decisões relevantes:** preferências/perfis/calibrações pequenos permanecem nos repositórios existentes; sessões usam `fretsense-sessions` esquema 1. Resumos evitam carregar registros grandes na listagem. Eventos brutos são mantidos somente quando entrada e julgamento estão completos, com limites de 2.048 por tipo e 2 MB por tentativa. Apresentação e edição são registradas explicitamente como ausentes até existirem perfis nas etapas 15A/19, sem inferência retroativa.
+- **Falhas e compatibilidade:** falhas de abertura, cota, escrita ou migração mudam para memória e são exibidas ao usuário; dados incompatíveis não são apagados silenciosamente. Conflitos de ID não sobrescrevem o registro persistente. Importação continua separada e não foi apresentada como disponível.
+- **Revisão realizada:** somente análise estática manual de contratos, tipos, imports, transações, fluxo assíncrono, retenção, estados, rotas, interface, traduções e diferenças; nenhum teste, lint, formatação automática, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** confirmação de persistência entre recargas, comportamento de cota/migração, download e aparência em execução depende do desenvolvedor. Replay da execução não foi implementado; a etapa apenas preserva e informa a disponibilidade dos dados necessários. Perfis de apresentação/edição ainda não existem. Importação de backup permanece evolução futura com validação própria.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 13, treino corretivo e progressão.
 
 ### Etapa 13 — Implementar treino corretivo e progressão
 

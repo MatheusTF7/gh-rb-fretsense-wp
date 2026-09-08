@@ -1,6 +1,6 @@
 # Prática e avaliação
 
-A etapa 10 transforma os presets de `fretsense-catalog@1.0.0` em tentativas configuráveis. O fluxo permanece local e em memória; persistência e histórico entre visitas pertencem à etapa 12.
+A etapa 10 transforma os presets de `fretsense-catalog@1.0.0` em tentativas configuráveis. O fluxo permanece local; a etapa 12 acrescentou persistência e histórico entre visitas quando IndexedDB está disponível.
 
 ## Preparação
 

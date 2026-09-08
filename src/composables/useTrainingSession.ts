@@ -19,6 +19,7 @@ import {
 } from '@/platform/input';
 import { SessionClock } from '@/platform/timing/session-clock';
 import { useCalibrationStore } from '@/stores/calibration';
+import { useHistoryStore } from '@/stores/history';
 import { useInterfaceStore } from '@/stores/interface';
 import { useTrainingStore } from '@/stores/training';
 
@@ -101,6 +102,7 @@ export function useTrainingSession() {
   const route = useRoute();
   const ui = useInterfaceStore();
   const calibrations = useCalibrationStore();
+  const history = useHistoryStore();
   const workspace = useTrainingStore();
   const captureArea = ref<HTMLElement | null>(null);
   const profileId = ref(ui.selectedProfileId);
@@ -387,6 +389,7 @@ export function useTrainingSession() {
     const currentSnapshot = snapshot.value;
     if (currentResult && currentSnapshot && workspace.latestRecord?.result.sessionId !== currentResult.sessionId) {
       workspace.saveResult(currentSnapshot, currentResult);
+      void history.persist(currentSnapshot, currentResult, session.getInputs(), session.getJudgments());
     }
     if (view.value.state === 'paused' || view.value.state === 'completed' || view.value.state === 'aborted') {
       stopFrame();
@@ -524,6 +527,7 @@ export function useTrainingSession() {
       const previousResult = previous.getView().result;
       if (previousSnapshot && previousResult && workspace.latestRecord?.result.sessionId !== previousResult.sessionId) {
         workspace.saveResult(previousSnapshot, previousResult);
+        void history.persist(previousSnapshot, previousResult, previous.getInputs(), previous.getJudgments());
       }
       await releaseRuntime();
       const nextAudio = new SessionAudio(next, () => {
@@ -684,7 +688,7 @@ export function useTrainingSession() {
   });
 
   return {
-    ui, workspace, captureArea, profileId, profile, connectionId, matchingConnections,
+    ui, workspace, history, captureArea, profileId, profile, connectionId, matchingConnections,
     presetId, selectedPreset, technique, level, descriptor, mode, bpm, seed, subdivision, allowedFrets,
     lengthKind, lengthValue, automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts,
     requireArticulation, requireStrumDirection, requireFullSustains, focusSegment, segmentOptions,
