@@ -1,7 +1,8 @@
 # Análise e diagnóstico detalhados
 
-A etapa 11 acrescenta uma análise posterior, pura e versionada pelo perfil
-`fretsense-analysis@1.0.0`. Ela é executada quando uma tentativa com o julgador
+A etapa 11 acrescenta uma análise posterior, pura e versionada. A etapa 14
+atualiza o perfil para `fretsense-analysis@1.1.0`, separando as famílias
+materializadas dentro de exercícios mistos. Ela é executada quando uma tentativa com o julgador
 inicial termina ou é encerrada. Os eventos, o combo e as decisões do julgador
 permanecem inalterados; o relatório somente interpreta os registros congelados.
 
@@ -65,7 +66,9 @@ reclassificação dos acertos.
 
 `SessionAnalysisReport` guarda o perfil, disponibilidade, limites usados,
 métricas de timing, frets, transições, acordes, sustains e direções, além de
-recortes por técnica e trecho. A tela de resultado apresenta numerador e
+recortes por técnica e trecho. Em `mixed`, cada nota é atribuída à família
+materializada (single/alternate strum, HOPO, tapping, acorde ou sustain), com
+precedência para sustain e acorde quando a forma também usa strum. A tela de resultado apresenta numerador e
 denominador nas razões, amostras de timing e separa fatos observados de padrões
 sugeridos. Registros incompletos produzem relatório parcial com as limitações
 explícitas. Tentativas encerradas antes de resolver toda a chart excluem as notas

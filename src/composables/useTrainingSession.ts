@@ -678,7 +678,7 @@ export function useTrainingSession() {
   const draftPresetId = workspace.draftPresetId;
   if (requestedPreset) {
     if (getDrillPreset(requestedPreset)) selectPreset(requestedPreset);
-  } else if (draftConfig && draftPresetId && getDrillPreset(draftPresetId)) {
+  } else if (draftConfig && draftPresetId) {
     presetId.value = draftPresetId;
     loadConfig(draftConfig);
     focusSegment.value = workspace.draftFocusSegment;

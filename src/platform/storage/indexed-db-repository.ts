@@ -149,6 +149,11 @@ export class IndexedDbSessionRepository implements SessionRepository, Adaptation
       .filter((item) => !request.filters.mode || item.mode === request.filters.mode)
       .filter((item) => !request.filters.endingState || item.endingState === request.filters.endingState)
       .filter((item) => !request.filters.technique || item.technique === request.filters.technique)
+      .filter((item) => !request.filters.level || item.level === request.filters.level)
+      .filter((item) => !request.filters.endedAtOrAfterIso
+        || item.endedAtIso >= request.filters.endedAtOrAfterIso)
+      .filter((item) => !request.filters.endedBeforeIso
+        || item.endedAtIso < request.filters.endedBeforeIso)
       .sort((left, right) => right.endedAtIso.localeCompare(left.endedAtIso));
     const start = (page - 1) * pageSize;
     return immutableCopy({ records: filtered.slice(start, start + pageSize), page, pageSize,

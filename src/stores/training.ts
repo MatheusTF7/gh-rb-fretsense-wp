@@ -30,6 +30,21 @@ export const useTrainingStore = defineStore('training', {
       this.draftFocusSegment = focusSegment;
       this.draftContext = immutableCopy(context);
     },
+    prepareSavedSession(snapshot: SessionSnapshot, focusSegment: string | null = null) {
+      this.prepareConfig(snapshot.config, snapshot, focusSegment);
+    },
+    prepareConfig(value: unknown, context: SessionSnapshot, focusSegment: string | null = null) {
+      const config = parseDrillConfig(value);
+      this.draftConfig = config;
+      this.draftPresetId = config.pattern.id;
+      this.draftFocusSegment = focusSegment;
+      this.draftContext = immutableCopy({
+        mode: context.mode,
+        profileId: context.device.id,
+        audioMode: context.calibration.context.audioMode,
+        calibrationId: context.calibration.method === 'default' ? null : context.calibration.id,
+      });
+    },
     saveResult(snapshot: SessionSnapshot, result: SessionResult) {
       requireCondition(snapshot.id === result.sessionId, 'training.result', 'Result belongs to another snapshot.');
       this.latestRecord = immutableCopy({ snapshot, result });

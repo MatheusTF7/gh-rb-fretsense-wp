@@ -95,13 +95,15 @@
       <h3>{{ t('results.analysis.bySegment') }}</h3>
       <div class="table-scroll">
         <table class="analysis-table">
-          <thead><tr><th>{{ t('results.analysis.slice') }}</th><th>{{ t('results.analysis.accuracy') }}</th><th>{{ t('results.analysis.timing.mean') }}</th><th>{{ t('results.analysis.diagnosticsCount') }}</th></tr></thead>
+          <thead><tr><th>{{ t('results.analysis.slice') }}</th><th>{{ t('results.analysis.accuracy') }}</th><th>{{ t('results.analysis.timing.mean') }}</th><th>{{ t('results.analysis.diagnosticsCount') }}</th><th>{{ t('results.analysis.action') }}</th></tr></thead>
           <tbody>
             <tr v-for="slice in report.segments" :key="slice.id">
               <th scope="row">{{ slice.id }}</th>
               <td>{{ ratioLabel(slice.noteAccuracy) }}</td>
               <td>{{ sliceTimingLabel(slice) }}</td>
               <td>{{ slice.diagnosticIds.length }}</td>
+              <td><q-btn v-if="focusable(slice)" flat dense no-caps icon="center_focus_strong"
+                :label="t('results.analysis.focusTraining')" @click="emit('focus-segment', slice.id)" /></td>
             </tr>
           </tbody>
         </table>
@@ -127,6 +129,7 @@ import { FRET_BITS } from '@/engine/domain';
 import FeedbackBanner from '@/components/FeedbackBanner.vue';
 
 const props = defineProps<{ report: SessionAnalysisReport }>();
+const emit = defineEmits<{ (event: 'focus-segment', segmentId: string): void }>();
 const { t } = useI18n();
 
 function unavailableLabel(metric: Extract<RatioMetric, { status: 'unavailable' }>): string {
@@ -184,6 +187,12 @@ function evidenceLabel(diagnostic: TrainingDiagnostic): string {
 function sliceTimingLabel(slice: AnalysisSlice): string {
   return slice.timing.status === 'available' ? signedTiming(slice.timing.meanErrorMs)
     : t(`results.analysis.unavailable.${slice.timing.reason}`);
+}
+
+function focusable(slice: AnalysisSlice): boolean {
+  const focusKey = slice.id.split(':').slice(2).join(':');
+  return focusKey.length > 0 && (slice.diagnosticIds.length > 0
+    || slice.noteAccuracy.status === 'available' && slice.noteAccuracy.value < 1);
 }
 </script>
 

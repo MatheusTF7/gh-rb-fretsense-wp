@@ -23,12 +23,19 @@
       </div>
       <q-select v-model="history.techniqueFilter" outlined clearable emit-value map-options
         :label="t('history.filters.technique')" :options="techniqueOptions" @update:model-value="filtersChanged" />
+      <q-select v-model="history.levelFilter" outlined clearable emit-value map-options
+        :label="t('history.filters.level')" :options="levelOptions" @update:model-value="filtersChanged" />
       <q-select v-model="history.modeFilter" outlined clearable emit-value map-options
         :label="t('history.filters.mode')" :options="modeOptions" @update:model-value="filtersChanged" />
       <q-select v-model="history.endingFilter" outlined clearable emit-value map-options
         :label="t('history.filters.ending')" :options="endingOptions" @update:model-value="filtersChanged" />
+      <q-input v-model="history.dateFromFilter" outlined clearable type="date"
+        :label="t('history.filters.dateFrom')" @update:model-value="filtersChanged" />
+      <q-input v-model="history.dateToFilter" outlined clearable type="date"
+        :label="t('history.filters.dateTo')" @update:model-value="filtersChanged" />
     </section>
 
+    <FeedbackBanner v-if="dateRangeInvalid" class="section-spacing" tone="error" :message="t('history.filters.invalidPeriod')" />
     <FeedbackBanner v-if="history.incompatibleCount" class="section-spacing" tone="error"
       :message="t('history.incompatible', { count: history.incompatibleCount })" />
     <FeedbackBanner v-if="history.error" class="section-spacing" tone="error" :message="t('history.loadError')" />
@@ -66,6 +73,9 @@
       <q-pagination v-model="history.page" :max="history.pageCount" direction-links boundary-links
         @update:model-value="history.loadPage()" />
     </nav>
+
+    <FeedbackBanner v-if="history.evolutionError" class="section-spacing" tone="error" :message="t('history.evolution.loadError')" />
+    <EvolutionPanel v-else-if="history.evolution" :dashboard="history.evolution" />
   </PageFrame>
 </template>
 
@@ -78,6 +88,7 @@ import PageFrame from '@/components/PageFrame.vue';
 import PageHeading from '@/components/PageHeading.vue';
 import PageState from '@/components/PageState.vue';
 import FeedbackBanner from '@/components/FeedbackBanner.vue';
+import EvolutionPanel from '@/components/reports/EvolutionPanel.vue';
 
 const { t, locale } = useI18n();
 const history = useHistoryStore();
@@ -88,26 +99,37 @@ const techniqueOptions = computed(() => TECHNIQUE_DESCRIPTORS.map(({ id }) => ({
 const modeOptions = computed(() => ['practice', 'assessment'].map((value) => ({
   value,
   label: t(`play.mode.${value}`),
+}))); 
+const levelOptions = computed(() => ['beginner', 'intermediate', 'advanced'].map((value) => ({
+  value,
+  label: t(`catalog.levels.${value}`),
 })));
 const endingOptions = computed(() => ['completed', 'aborted'].map((value) => ({
   value,
   label: t(`play.ending.${value}`),
 })));
 const storageMessage = computed(() => t(`history.storage.${history.storageState.issue ?? history.storageState.mode}`));
-const hasFilters = computed(() => Boolean(history.techniqueFilter || history.modeFilter || history.endingFilter));
+const hasFilters = computed(() => Boolean(history.techniqueFilter || history.levelFilter || history.modeFilter
+  || history.endingFilter || history.dateFromFilter || history.dateToFilter));
+const dateRangeInvalid = computed(() => Boolean(history.dateFromFilter && history.dateToFilter
+  && history.dateFromFilter > history.dateToFilter));
 
 function dateLabel(value: string): string {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 }
 
 function filtersChanged(): void {
+  if (dateRangeInvalid.value) return;
   void history.loadPage(true);
 }
 
 function clearFilters(): void {
   history.techniqueFilter = null;
+  history.levelFilter = null;
   history.modeFilter = null;
   history.endingFilter = null;
+  history.dateFromFilter = null;
+  history.dateToFilter = null;
   void history.loadPage(true);
 }
 
@@ -115,7 +137,8 @@ onMounted(() => { void history.loadPage(); });
 </script>
 
 <style scoped>
-.history-filters { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(150px, .7fr)); gap: 16px; align-items: center; }
+.history-filters { display: grid; grid-template-columns: repeat(3, minmax(170px, 1fr)); gap: 16px; align-items: center; }
+.history-filters > div:first-child { grid-column: 1 / -1; }
 .history-filters h2 { margin-top: 0; }
 .history-filters p { margin-bottom: 0; }
 .history-content { position: relative; min-height: 180px; margin-top: 24px; }

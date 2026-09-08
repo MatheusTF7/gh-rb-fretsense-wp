@@ -25,9 +25,14 @@
           <div><dt>{{ t('play.bpm') }}</dt><dd>{{ record.snapshot.config.bpm }}</dd></div>
           <div><dt>{{ t('play.notesPlanned') }}</dt><dd>{{ record.snapshot.chart.notes.length }}</dd></div>
           <div><dt>{{ t('play.ruleProfile') }}</dt><dd>{{ record.snapshot.rules.id }}@{{ record.snapshot.rules.version }}</dd></div>
+          <div><dt>{{ t('results.hitWindow') }}</dt><dd>-{{ record.snapshot.rules.hitWindow.earlyMs }}/+{{ record.snapshot.rules.hitWindow.lateMs }} ms</dd></div>
+          <div><dt>{{ t('results.presentation') }}</dt><dd>{{ referenceLabel(storedRecord?.presentation ?? null) }}</dd></div>
+          <div><dt>{{ t('results.gameEdition') }}</dt><dd>{{ referenceLabel(storedRecord?.gameEdition ?? null) }}</dd></div>
           <div><dt>{{ t('results.generator') }}</dt><dd>{{ record.snapshot.chart.generator.id }}@{{ record.snapshot.chart.generator.version }}</dd></div>
-          <div><dt>{{ t('play.profile') }}</dt><dd>{{ record.snapshot.device.label }}</dd></div>
-          <div><dt>{{ t('play.calibration') }}</dt><dd>{{ record.snapshot.calibration.id }}@{{ record.snapshot.calibration.version }}</dd></div>
+          <div><dt>{{ t('play.profile') }}</dt><dd>{{ record.snapshot.device.label }} · {{ record.snapshot.device.kind }} · {{ record.snapshot.device.id }}@{{ record.snapshot.device.version }}</dd></div>
+          <div><dt>{{ t('play.calibration') }}</dt><dd>{{ record.snapshot.calibration.id }}@{{ record.snapshot.calibration.version }} · {{ t(`results.calibrationMethod.${record.snapshot.calibration.method}`) }}</dd></div>
+          <div><dt>{{ t('results.calibrationOffsets') }}</dt><dd>{{ signed(record.snapshot.calibration.judgmentOffsetMs) }} ms / {{ signed(record.snapshot.calibration.visualOffsetMs) }} ms</dd></div>
+          <div><dt>{{ t('results.attemptCondition') }}</dt><dd>{{ conditionLabel }}</dd></div>
           <div><dt>{{ t('play.seed') }}</dt><dd>{{ record.snapshot.config.seed }}</dd></div>
         </dl>
 
@@ -51,10 +56,38 @@
           {{ t('play.interruptions', { count: record.result.interruptions.length }) }}
         </p>
         <ChartPreview :chart="record.snapshot.chart" />
-        <SessionAnalysisReport v-if="record.result.analysis" :report="record.result.analysis" />
+        <SessionAnalysisReport v-if="record.result.analysis" :report="record.result.analysis"
+          @focus-segment="prepareFocusedTraining" />
         <FeedbackBanner v-else tone="error" :message="t('results.analysis.notPerformed')" />
+        <SessionExecutionDetails v-if="executionDetails" :details="executionDetails" />
         <TrainingRecommendationCard v-if="adaptation.record && adaptation.record.sourceSessionId === record.snapshot.id"
-          :record="adaptation.record" />
+          :record="adaptation.record" actionable :adaptive-limit-reached="adaptation.adaptiveLimitReached"
+          @accept="applyHistoricalRecommendation('accept')" @adjust="applyHistoricalRecommendation('adjust')"
+          @ignore="applyHistoricalRecommendation('ignore')" />
+
+        <section class="result-comparison" aria-labelledby="result-comparison-title">
+          <div>
+            <p class="section-kicker">{{ t('results.comparison.eyebrow') }}</p>
+            <h3 id="result-comparison-title">{{ t('results.comparison.title') }}</h3>
+          </div>
+          <p v-if="!comparison || comparison.status === 'none'" class="muted-text">{{ t('results.comparison.none') }}</p>
+          <template v-else-if="comparison.status === 'compatible'">
+            <p>{{ t('results.comparison.compatible') }}</p>
+            <dl class="comparison-metrics">
+              <div><dt>{{ t('results.comparison.accuracyDelta') }}</dt><dd>{{ ratioDeltaLabel(comparison.accuracyDelta) }}</dd></div>
+              <div><dt>{{ t('results.comparison.timingDelta') }}</dt><dd>{{ timingDeltaLabel(comparison.timingAbsoluteDeltaMs) }}</dd></div>
+            </dl>
+            <q-btn flat no-caps :to="{ name: 'results', params: { id: comparison.candidateSessionId } }"
+              :label="t('results.comparison.openPrevious')" />
+          </template>
+          <template v-else>
+            <FeedbackBanner tone="error" :message="t('results.comparison.incompatible', {
+              differences: comparison.differences.map((item) => t(`results.comparison.differences.${item}`)).join(', '),
+            })" />
+            <q-btn flat no-caps :to="{ name: 'results', params: { id: comparison.candidateSessionId } }"
+              :label="t('results.comparison.openCandidate')" />
+          </template>
+        </section>
 
         <section class="result-recording" aria-labelledby="result-recording-title">
           <div>
@@ -68,7 +101,8 @@
         </section>
 
         <div class="result-detail__actions">
-          <q-btn unelevated color="primary" no-caps icon="tune" :to="{ name: 'play' }" :label="t('results.backToConfiguration')" />
+          <q-btn unelevated color="primary" no-caps icon="replay" :label="t('results.repeatChart')" @click="prepareRepeat" />
+          <q-btn outline no-caps icon="tune" :to="{ name: 'play' }" :label="t('results.backToConfiguration')" />
           <q-btn outline no-caps :to="{ name: 'train' }" :label="t('common.browseCatalog')" />
           <q-btn outline no-caps icon="download" :disable="!storedRecord" :label="t('results.exportJson')" @click="exportJson" />
           <q-btn flat no-caps color="negative" icon="delete_outline" :disable="!storedRecord"
@@ -102,7 +136,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import type { RatioMetric } from '@/engine/domain';
+import type { RatioMetric, VersionedReference } from '@/engine/domain';
+import { buildSessionExecutionDetails } from '@/engine/reporting';
 import { useHistoryStore } from '@/stores/history';
 import { useAdaptationStore } from '@/stores/adaptation';
 import { useTrainingStore } from '@/stores/training';
@@ -113,6 +148,7 @@ import FeedbackBanner from '@/components/FeedbackBanner.vue';
 import ChartPreview from '@/components/training/ChartPreview.vue';
 import SessionAnalysisReport from '@/components/reports/SessionAnalysisReport.vue';
 import TrainingRecommendationCard from '@/components/reports/TrainingRecommendationCard.vue';
+import SessionExecutionDetails from '@/components/reports/SessionExecutionDetails.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -131,6 +167,19 @@ const record = computed(() => {
 });
 const storedRecord = computed(() => history.selectedRecord?.id === routeId.value ? history.selectedRecord : null);
 const detailedExecutionAvailable = computed(() => storedRecord.value?.retainedEvents.status === 'complete');
+const comparison = computed(() => history.comparisonForId === routeId.value ? history.comparison : null);
+const executionDetails = computed(() => {
+  const current = record.value;
+  const stored = storedRecord.value;
+  if (!current) return null;
+  return buildSessionExecutionDetails({
+    snapshot: current.snapshot,
+    result: current.result,
+    presentation: stored?.presentation ?? null,
+    gameEdition: stored?.gameEdition ?? null,
+    judgments: stored?.retainedEvents.status === 'complete' ? stored.retainedEvents.judgments : null,
+  });
+});
 const hasSustains = computed(() => record.value?.snapshot.chart.notes.some((note) => note.durationTicks > 0) ?? false);
 const timingLabel = computed(() => {
   const timing = record.value?.result.metrics.timing;
@@ -138,9 +187,63 @@ const timingLabel = computed(() => {
   const rounded = Math.round(timing.meanErrorMs);
   return `${rounded > 0 ? '+' : ''}${rounded} ms`;
 });
+const conditionLabel = computed(() => {
+  const current = record.value;
+  if (!current) return '';
+  const reasons = current.result.progression.eligible ? [] : current.result.progression.reasons
+    .map((reason) => t(`results.progressionReasons.${reason}`));
+  return [t(`play.ending.${current.result.ending.state}`),
+    current.result.interruptions.length ? t('play.interruptions', { count: current.result.interruptions.length }) : null,
+    ...reasons].filter(Boolean).join(' · ');
+});
 
 function ratioLabel(metric: RatioMetric): string {
   return metric.status === 'available' ? `${Math.round(metric.value * 100)}%` : t('play.unavailable');
+}
+
+function signed(value: number): string { return value > 0 ? `+${value}` : String(value); }
+
+function referenceLabel(reference: VersionedReference | null): string {
+  return reference ? `${reference.id}@${reference.version}` : t('results.notRecorded');
+}
+
+function ratioDeltaLabel(value: number | null): string {
+  if (value === null) return t('play.unavailable');
+  const points = Math.round(value * 1000) / 10;
+  return t('results.comparison.percentagePoints', { value: signed(points) });
+}
+
+function timingDeltaLabel(value: number | null): string {
+  return value === null ? t('play.unavailable') : t('results.comparison.milliseconds', { value: signed(Math.round(value)) });
+}
+
+async function prepareRepeat(): Promise<void> {
+  const current = record.value;
+  if (!current) return;
+  workspace.prepareSavedSession(current.snapshot);
+  await router.push({ name: 'play' });
+}
+
+async function prepareFocusedTraining(segmentId: string): Promise<void> {
+  const current = record.value;
+  if (!current) return;
+  const focusSegment = segmentId.split(':').slice(2).join(':');
+  if (!focusSegment) return;
+  workspace.prepareSavedSession(current.snapshot, focusSegment);
+  await router.push({ name: 'play' });
+}
+
+async function applyHistoricalRecommendation(action: 'accept' | 'adjust' | 'ignore'): Promise<void> {
+  const current = record.value;
+  if (!current) return;
+  if (action === 'ignore') {
+    await adaptation.ignore();
+    return;
+  }
+  const config = action === 'accept' ? await adaptation.accept() : await adaptation.adjust();
+  if (!config) return;
+  workspace.prepareConfig(config, current.snapshot);
+  await router.push({ name: 'play' });
 }
 
 function loadRecord(): void {
@@ -202,6 +305,13 @@ watch(routeId, loadRecord);
 .result-recording h3 { margin: 0 0 8px; }
 .result-recording p { margin: 0; color: var(--fs-muted); font-size: .875rem; }
 .result-detail__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.result-comparison { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--fs-border); border-radius: 10px; }
+.result-comparison h3, .result-comparison p { margin: 0; }
+.section-kicker { margin: 0 0 4px; color: var(--q-primary); font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.comparison-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.comparison-metrics > div { padding: 12px; border: 1px solid var(--fs-border); border-radius: 8px; }
+.comparison-metrics dt { color: var(--fs-muted); font-size: .75rem; }
+.comparison-metrics dd { margin: 3px 0 0; font-weight: 700; }
 .result-remove-dialog { width: min(100%, 520px); }
 .result-remove-dialog h2 { margin: 0 0 12px; }
 .result-remove-dialog p { margin: 0; color: var(--fs-muted); }

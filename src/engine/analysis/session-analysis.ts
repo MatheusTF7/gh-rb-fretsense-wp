@@ -25,7 +25,7 @@ import { ENGINE_LIMITS as limits } from '../domain/limits';
 import { countFrets } from '../domain/validation';
 import { judgmentTime, ticksToMilliseconds } from '../timing';
 
-export const ANALYSIS_POLICY = Object.freeze({ id: 'fretsense-analysis', version: '1.0.0' });
+export const ANALYSIS_POLICY = Object.freeze({ id: 'fretsense-analysis', version: '1.1.0' });
 
 const FRET_ORDER: readonly Fret[] = ['G', 'R', 'Y', 'B', 'O'];
 const MINIMUM_TREND_SAMPLES = 8;
@@ -467,7 +467,13 @@ export function analyzeSession(
   const createSlices = (kind: 'segment' | 'technique'): AnalysisSlice[] => {
     const groups = new Map<string, ExpectedNote[]>();
     for (const item of expected) {
-      const key = kind === 'segment' ? item.note.origin.segmentId : item.note.origin.technique;
+      const mixedTechnique: Technique = item.note.durationTicks > 0 ? 'sustains'
+        : countFrets(item.note.frets) > 1 ? 'chords'
+          : item.note.articulation === 'hopo' ? 'hopo'
+            : item.note.articulation === 'tap' ? 'tapping'
+              : item.note.expectedStrumDirection !== null ? 'alternate-strum' : 'single-strum';
+      const key = kind === 'segment' ? item.note.origin.segmentId
+        : snapshot.config.technique === 'mixed' ? mixedTechnique : item.note.origin.technique;
       const group = groups.get(key) ?? [];
       group.push(item);
       groups.set(key, group);
@@ -481,7 +487,7 @@ export function analyzeSession(
       });
       return {
         id,
-        technique: notes[0]?.note.origin.technique as Technique,
+        technique: (kind === 'technique' ? id : notes[0]?.note.origin.technique) as Technique,
         expectedNotes: notes.length,
         noteAccuracy: ratio(hits, notes.length),
         timing: timing(sliceHits),

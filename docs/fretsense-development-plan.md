@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–12 revisadas estaticamente, sem confirmação em execução. Etapas 13–20 pendentes.
+**Status:** etapas 01–14 revisadas estaticamente, sem confirmação em execução. Etapas 15A–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -581,19 +581,31 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Organizar relatório com resumo, timing, frets, transições, acordes, strum, sustains e recomendações aplicáveis.
-- [ ] Exibir no resultado técnica/nível, BPM, regra e apresentação usadas, edição opcional, dispositivo, calibração e condição da tentativa.
-- [ ] Criar distribuição de timing e mapa de erros do padrão com representação textual/tabelada equivalente.
-- [ ] Separar resultados por técnica e trecho em exercícios mistos.
-- [ ] Criar histórico filtrável por período, família, nível, modo e condição de conclusão.
-- [ ] Comparar apenas grupos compatíveis ou exibir claramente as diferenças de BPM, chart, regra, janela, apresentação, edição e calibração.
-- [ ] Mostrar evolução e limites de BPM a partir de tentativas registradas com amostras suficientes; não extrapolar habilidade a partir de uma única sessão.
-- [ ] Permitir abrir uma sessão, repetir sua chart salva ou criar treino focado em um problema identificado.
-- [ ] Distinguir dado inexistente, amostra insuficiente e técnica não avaliada de desempenho igual a zero.
+- [x] Organizar relatório com resumo, timing, frets, transições, acordes, strum, sustains e recomendações aplicáveis.
+- [x] Exibir no resultado técnica/nível, BPM, regra e apresentação usadas, edição opcional, dispositivo, calibração e condição da tentativa.
+- [x] Criar distribuição de timing e mapa de erros do padrão com representação textual/tabelada equivalente.
+- [x] Separar resultados por técnica e trecho em exercícios mistos.
+- [x] Criar histórico filtrável por período, família, nível, modo e condição de conclusão.
+- [x] Comparar apenas grupos compatíveis ou exibir claramente as diferenças de BPM, chart, regra, janela, apresentação, edição e calibração.
+- [x] Mostrar evolução e limites de BPM a partir de tentativas registradas com amostras suficientes; não extrapolar habilidade a partir de uma única sessão.
+- [x] Permitir abrir uma sessão, repetir sua chart salva ou criar treino focado em um problema identificado.
+- [x] Distinguir dado inexistente, amostra insuficiente e técnica não avaliada de desempenho igual a zero.
 
 **Entregáveis:** relatórios completos, histórico e painel de evolução. Esta etapa conclui M3.
 
 **Critério de conclusão:** o usuário consegue localizar uma dificuldade, entender sua evidência, comparar sessões compatíveis e iniciar uma ação de treino relacionada.
+
+**Registro da etapa — 2026-09-08:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** contexto completo do resultado; relatório organizado por dimensão; distribuição de timing e mapa textual/tabelado de erros; recortes por técnica e trecho; filtros de período, família/técnica, nível, modo e conclusão; comparação estrita; painel de evolução; repetição da chart e treino focado em trecho.
+- **Arquivos:** `src/engine/reporting`, componentes de relatório, stores/persistência e telas de histórico/resultado, mensagens `pt-BR`/`en-US` e [relatórios e evolução](./reports-and-evolution.md).
+- **Decisões relevantes:** deltas só são calculados quando modo, técnica, nível, BPM, chart, regra/janela, apresentação, edição, dispositivo e calibração coincidem; os demais casos enumeram diferenças. O limite consistente de BPM exige três sucessos concluídos e elegíveis, com ao menos oito notas cada, no mesmo BPM e grupo estrutural. Faixa observada não é apresentada como habilidade extrapolada. `fretsense-analysis@1.1.0` separa famílias materializadas dentro de exercícios mistos.
+- **Disponibilidade de dados:** distribuição usa somente julgamentos brutos retidos; mapa usa evidências do diagnóstico; ausência, vazio, insuficiência e zero permanecem estados distintos. Apresentação e edição continuam explicitamente não registradas até as etapas 15A/19.
+- **Revisão realizada:** somente análise estática manual de contratos, tipos, imports, filtros, estados, comparações, agrupamentos, ações, traduções e documentação; nenhum teste, lint, formatação automática, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** comportamento, aparência responsiva e custo com históricos grandes dependem de confirmação pelo desenvolvedor. O replay repete chart/configuração, não a execução gravada. A etapa 15A criará o primeiro perfil de apresentação real.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 15A, refinamento da highway e da tela de jogo; M3 concluído no estado de implementação revisada estaticamente.
 
 ### Etapa 15A — Refinar a highway e a tela de jogo
 

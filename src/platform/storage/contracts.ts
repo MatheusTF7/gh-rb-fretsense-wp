@@ -80,6 +80,9 @@ export interface SessionListFilters {
   readonly mode?: SessionMode;
   readonly endingState?: SessionResult['ending']['state'];
   readonly technique?: Technique;
+  readonly level?: DrillLevel;
+  readonly endedAtOrAfterIso?: string;
+  readonly endedBeforeIso?: string;
 }
 
 export interface SessionListRequest {
