@@ -80,7 +80,9 @@ const techniques: readonly { id: Technique; icon: string }[] = [
   { id: 'sustains', icon: 'horizontal_rule' },
   { id: 'mixed', icon: 'shuffle' },
 ];
-const availableTechniques = new Set<Technique>(['single-strum', 'tapping', 'sequences', 'chords']);
+const availableTechniques = new Set<Technique>([
+  'single-strum', 'alternate-strum', 'hopo', 'tapping', 'sequences', 'chords', 'sustains',
+]);
 
 function normalizeSearch(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();

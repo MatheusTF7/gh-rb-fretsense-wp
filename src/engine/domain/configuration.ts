@@ -63,8 +63,10 @@ export function parseDrillConfig(value: unknown): DrillConfig {
   };
   requireCondition(sameReference(parsed.ruleProfile, FRETSENSE_V1_RULE_PROFILE), 'config.ruleProfile', 'Only fretsense-v1@1.0.0 is implemented.', 'unsupported');
   requireCondition(parsed.chordSize <= countFrets(parsed.allowedFrets), 'config.chordSize', 'Not enough allowed frets.');
-  requireCondition(parsed.chordSize === 1 || parsed.articulation === 'strum', 'config.articulation', 'Chords require strum.');
-  requireCondition(parsed.strumDirectionGoal.kind === 'none' || parsed.articulation === 'strum', 'config.strumDirectionGoal', 'Direction goals require strum notes.');
+  requireCondition(parsed.chordSize === 1 || parsed.articulation === 'strum' || parsed.articulation === 'mixed',
+    'config.articulation', 'Chords require strum notes.');
+  requireCondition(parsed.strumDirectionGoal.kind === 'none' || parsed.articulation === 'strum' || parsed.articulation === 'mixed',
+    'config.strumDirectionGoal', 'Direction goals require strum notes.');
   requireCondition(!parsed.goals.requireStrumDirection || parsed.strumDirectionGoal.kind !== 'none', 'config.goals.requireStrumDirection', 'A direction goal is required.');
   requireCondition(!parsed.goals.requireFullSustains || parsed.sustainTicks > 0, 'config.goals.requireFullSustains', 'A sustain duration is required.');
   return immutableCopy(parsed);

@@ -1,6 +1,6 @@
 # Núcleo inicial do Fretsense — etapa 03
 
-**Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. A etapa 07 conectou este núcleo ao primeiro [treino jogável](./playable-training.md). A etapa 06 acrescentou julgamento opcional de strum/tap/acordes sem caudas. As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
+**Estado:** implementação revisada somente por análise estática manual, sem confirmação em execução. A etapa 07 conectou este núcleo ao primeiro [treino jogável](./playable-training.md), e a etapa 08 ampliou o julgamento em [articulações e sustains](./articulations-and-sustains.md). As regras musicais permanecem em [gameplay-rules.md](./gameplay-rules.md).
 
 Este documento registra a fundação da etapa 03. A etapa 04 acrescentou os adaptadores e o vínculo de entrada descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou a projeção temporal da sessão, normalização de timestamps, áudio e calibração descritos em [relógio e calibração](./timing-and-calibration.md); a etapa 07 integrou esses recursos na área jogável.
 
@@ -22,12 +22,13 @@ Os dados capturados são cópias congeladas recursivamente. Alterações posteri
 
 ## Geração e versões
 
-O gerador é `initial-generator@1.0.0`, com o perfil `fretsense-v1@1.0.0`. Ambos os padrões iniciais têm versão `1.0.0` e aceitam apenas o nível `beginner`:
+O gerador é `initial-generator@1.0.0`, com o perfil `fretsense-v1@1.0.0`. Os dois padrões iniciais da etapa 03 têm versão `1.0.0` e aceitam apenas o nível `beginner`; a etapa 08 acrescentou um cenário-base misto na mesma versão do gerador sem alterar saídas antes suportadas:
 
 | Padrão | Configurações suportadas |
 | --- | --- |
 | `ascending-descending` | Ao menos dois frets permitidos, notas simples e tamanho igual ao dobro da quantidade de frets. Técnicas `sequences`, `hopo`, `tapping` ou `sustains`; articulação uniforme `strum`, `hopo` ou `tap`, coerente com a técnica escolhida |
 | `repeated-strum` | Uma máscara escolhida pela semente e repetida ao longo da tentativa. Técnicas `single-strum`, `alternate-strum`, `chords` ou `sustains`; articulação `strum`. Acordes de dois/três frets para `chords`; `alternate-strum` exige meta alternada e notas simples |
+| `articulation-transitions` | Seis passos determinísticos entre nota simples, acorde duplo/triplo e `strum`/`hopo`/`tap`; cenário-base `mixed` para validar as transições do perfil, sem representar o catálogo procedural da etapa 09 |
 
 A subida/descida conserva a repetição na inversão: com todos os frets, `G R Y B O O B Y R G`. Sustains podem acompanhar as articulações admitidas. A técnica `sustains` exige duração positiva. Uma cauda não ultrapassa o próximo início nem a extensão configurada; notas que não cabem inteiras em uma duração fixa são omitidas, sem encurtar caudas. Cada repetição identifica um trecho próprio; as metas alternadas reiniciam nesse trecho ou após o intervalo configurado sem notas.
 
@@ -35,7 +36,7 @@ A subida/descida conserva a repetição na inversão: com todos os frets, `G R Y
 
 A semente usa hash FNV-1a sobre unidades UTF-16 e PRNG inteiro local. O mesmo objeto de configuração normalizado, semente e versão gera os mesmos valores, IDs e ordem. O hash usado no ID da chart não é prova de igualdade nem identificador de sessão: a repetição compara os dados completos com a geração canônica.
 
-`repeatSessionSnapshot` conserva exercício e contexto com outro ID de sessão. `varySessionSnapshot` exige uma semente diferente e preserva as demais condições. Uma nova semente **não garante notas diferentes**: a subida/descida é canônica e o padrão repetido tem um conjunto finito de máscaras. Importação de charts arbitrárias, migração de geradores antigos, níveis adicionais e padrões mistos permanecem fora desta etapa; versões não suportadas são rejeitadas explicitamente.
+`repeatSessionSnapshot` conserva exercício e contexto com outro ID de sessão. `varySessionSnapshot` exige uma semente diferente e preserva as demais condições. Uma nova semente **não garante notas diferentes**: a subida/descida e as transições-base são canônicas, e o padrão repetido tem um conjunto finito de máscaras. Importação de charts arbitrárias, migração de geradores antigos, níveis adicionais e composição procedural de padrões mistos permanecem fora desta etapa; versões não suportadas são rejeitadas explicitamente.
 
 ## Limites iniciais
 
@@ -65,7 +66,7 @@ Os valores estão centralizados em `ENGINE_LIMITS` e são decisões de implement
 | Operação | Efeito |
 | --- | --- |
 | `prepare` | De `idle` para `ready`, com snapshot válido |
-| `enableInitialJudgment` | Em `ready`, ativa o julgador de strum/tap sem caudas e rejeita escopo ainda não suportado |
+| `enableInitialJudgment` | Em `ready`, ativa o julgador interno de strum, HOPO, tap, direção, acordes e caudas |
 | `start` | De `ready` para `countdown` |
 | `advance` | Atualiza contagem/tempo ativo; ao acabar a contagem passa a `running`, preservando atraso entre chamadas |
 | `openInputWindow` | Na borda da contagem, passa a `running` pelo instante observado sem avançar o julgador antes da entrada |
@@ -81,7 +82,7 @@ Os valores estão centralizados em `ENGINE_LIMITS` e são decisões de implement
 
 Somente `running` aceita `recordInput`. Na preparação/contagem/pausa, `setInputBaseline` sincroniza frets mantidos sem criar ataques. Sequências começam em zero e crescem mesmo depois de pausas; timestamps podem empatar. Eventos precisam pertencer ao dispositivo capturado e à conexão corrente, respeitar as transições de máscaras e não anteceder o horizonte bruto já processado. Uma troca de conexão exige interrupção. A pausa limpa frets/conexão, preserva o contador de entradas e invalida a elegibilidade para progressão. Uma nova interrupção durante a contagem de retomada continua a interrupção aberta.
 
-O coordenador deve entregar o lote capturado por `recordInput` antes de chamar `advance` para fechar seu horizonte; os adaptadores convertem timestamps para tempo ativo bruto. Com o julgador inicial ativado, a sessão encaminha entradas/horizontes e recebe a avaliação internamente; `reportEvaluation` externo fica bloqueado para impedir dois produtores. O julgador subtrai `judgmentOffsetMs` uma única vez. O offset visual não participa do encerramento ou das métricas. Limpeza de entrada e cancelamento de áudio continuam sendo responsabilidades da integração; HOPO/sustains permanecem na etapa 08.
+O coordenador deve entregar o lote capturado por `recordInput` antes de chamar `advance` para fechar seu horizonte; os adaptadores convertem timestamps para tempo ativo bruto. Com o julgador interno ativado, a sessão encaminha entradas/horizontes e recebe a avaliação internamente; `reportEvaluation` externo fica bloqueado para impedir dois produtores. O julgador subtrai `judgmentOffsetMs` uma única vez. O offset visual não participa do encerramento ou das métricas. Limpeza de entrada e cancelamento de áudio continuam sendo responsabilidades da integração; HOPO e sustains usam o mesmo relógio ativo desde a etapa 08.
 
 Se o relógio recuar ou ficar inválido durante contagem/execução, a sessão pausa com `input-timing-invalid`; uma entrada afetada é rejeitada. Retomar exige uma leitura válida que não anteceda a última leitura aceita. Durante a pausa, `advance` não acumula tempo nem resolve notas.
 

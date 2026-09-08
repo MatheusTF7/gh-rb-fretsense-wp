@@ -1,16 +1,19 @@
 # Treino jogável — etapa 07
 
-**Estado:** implementação concluída e revisada somente por análise estática manual. Execução no navegador, áudio e hardware ainda dependem de confirmação do desenvolvedor.
+**Estado:** base implementada na etapa 07 e ampliada na etapa 08, revisada somente por análise estática manual. Execução no navegador, áudio e hardware ainda dependem de confirmação do desenvolvedor.
 
 ## Fluxo disponível
 
 A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado em memória. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de strum, modo de áudio e calibração. O strum automático vem selecionado por padrão para teclado e Gamepad. Estão disponíveis:
 
 - subida/descida de cinco frets por strum ou tap;
+- subida/descida por HOPO, com início e recuperação por strum;
 - nota repetida por strum;
-- acorde repetido de dois ou três frets por strum.
+- acorde repetido de dois ou três frets por strum;
+- caudas de 120 ou 240 ticks nos padrões iniciais;
+- strum alternado em nota simples repetida, iniciando para cima ou para baixo.
 
-HOPO, sustains, níveis adicionais e cenários mistos continuam fora desta etapa. O catálogo identifica as quatro famílias com exercício inicial sem apresentar as demais como operacionais.
+Níveis adicionais e cenários procedurais mistos continuam fora deste fluxo. O catálogo completo permanece na etapa 09.
 
 ## Controlador e ciclo de recursos
 
@@ -26,11 +29,11 @@ No strum automático, pressionar os frets exatos dentro da janela aciona uma not
 
 `HighwayRenderer` recebe apenas chart, tempo ativo, offset visual, frets ativos e eventos já decididos pelo motor. Ele não julga notas. A posição vertical usa o tempo restante e uma velocidade fixa de 300 px/s; mudar BPM altera a grade musical, não essa velocidade visual.
 
-O renderer ajusta a resolução ao tamanho CSS e limita a densidade a 2. Uma busca binária encontra a primeira nota visível e o laço termina ao sair do horizonte futuro, evitando desenhar a chart inteira. Pistas e notas usam cor acompanhada de posição/letra; os receptores mostram frets ativos. Combo, progresso, contagem e feedback textual de timing permanecem em HTML.
+O renderer ajusta a resolução ao tamanho CSS e limita a densidade a 2. Uma busca binária encontra a primeira nota visível e o laço termina ao sair do horizonte futuro, evitando desenhar a chart inteira. Pistas e notas usam cor acompanhada de posição/letra; círculos, losangos e quadrados distinguem strum, HOPO e tap, setas mostram direção e linhas representam caudas. Os receptores mostram frets ativos. Combo, progresso, contagem e feedback textual permanecem em HTML.
 
 ## Resultado e recuperação
 
-Ao terminar, a página mostra acertos/planejadas, precisão, melhor combo, timing médio, strums extras e duração ativa. Resultados interrompidos são identificados e preservam somente a parte julgada. Repetir conserva a configuração e a semente, gerando a mesma chart com outro ID. O resultado desaparece ao sair da página; persistência pertence à etapa 12.
+Ao terminar, a página mostra acertos/planejadas, precisão, melhor combo, timing médio, strums extras, conclusão/quebras de sustain, conformidade de direção quando aplicável e duração ativa. Resultados interrompidos são identificados e preservam somente a parte julgada. Repetir conserva a configuração e a semente, gerando a mesma chart com outro ID. O resultado desaparece ao sair da página; persistência pertence à etapa 12.
 
 Falhas de áudio oferecem modo silencioso. Entrada ausente aponta para mapeamento/conexão, calibração incompatível aponta para recalibração e configuração inválida retorna ao formulário sem iniciar uma tentativa parcial.
 

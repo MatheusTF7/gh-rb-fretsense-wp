@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–07 revisadas estaticamente, sem confirmação em execução. Etapas 08–20 pendentes.
+**Status:** etapas 01–08 revisadas estaticamente, sem confirmação em execução. Etapas 09–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento de strum/tap/acordes sem caudas, métricas e encerramento da sessão julgada, descritos em [julgamento inicial](./initial-judgment.md). A etapa 07 integrou esses módulos em um primeiro [treino jogável](./playable-training.md), com highway Canvas e resultado básico em memória. Ainda precisam ser implementados HOPO/sustains, catálogo completo, relatórios detalhados e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. Ainda precisam ser implementados catálogo completo, relatórios detalhados e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -335,9 +335,9 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 - **Decisões musicais:** perfil `fretsense-v1@1.0.0` preservado; candidata mais antiga na janela inclusiva de ±120 ms, sem filtro prévio por fret/articulação. Strum tem prioridade no evento e consome no máximo um início. Acorde não pode ser completado depois do strum (`formationGraceMs = 0`). Tap repetido exige liberação real do alvo e novo pressionamento; strum em tap pode acertar com falha técnica.
 - **Tempo e métricas:** offset aplicado uma vez pelo julgador em entradas/horizontes; imagem independente. Expirações registram a borda tardia, embora só sejam emitidas depois dela. Precisão usa notas resolvidas; timing usa hits com média, erro absoluto e desvio populacional incremental. Ausência de amostras e direção desconhecida não produzem sucesso presumido.
 - **Integração com sessão:** `enableInitialJudgment()` ativa o produtor em `ready`; `recordInput` e `advance` encaminham dados e atualizam o relatório. `advance` conclui automaticamente após a janela final; pausa/abandono não concluem automaticamente por essa chamada e preservam notas futuras não julgadas. Repetição/variação/reinício criam julgador e registros novos. `getEvaluation()` e `getJudgments()` expõem dados imutáveis para o coordenador futuro.
-- **Limites e escopo:** valida snapshot/chart canônicos e rejeita HOPO/sustains antes da contagem julgada. Conserva limites de 4.096 notas, 65.536 entradas e 131.072 julgamentos; não há sobrescrita de registros. Metas por direção já materializadas nas notas são observadas; catálogo e cenários completos continuam nas etapas posteriores.
+- **Limites e escopo naquele registro:** validava snapshot/chart canônicos e ainda rejeitava HOPO/sustains antes da contagem julgada; essa restrição foi removida na etapa 08. Conserva limites de 4.096 notas, 65.536 entradas e 131.072 julgamentos, sem sobrescrita de registros. Metas por direção materializadas nas notas são observadas; catálogo e cenários completos continuam nas etapas posteriores.
 - **Revisão realizada:** somente análise estática manual de tipos, imports, máscaras, janelas, ordem, agregação, limites, pausa/retomada, conclusão e referências documentais. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou navegador.
-- **Limitações e pendências:** implementação no núcleo; treino/resultado na interface dependem da etapa 07. HOPO e caudas permanecem na etapa 08. Diagnóstico detalhado, histórico e progressão permanecem nas etapas 11–14. Não houve confirmação prática de funcionamento ou desempenho.
+- **Limitações e pendências naquele registro:** a integração jogável ainda dependia da etapa 07 e HOPO/caudas da etapa 08; ambas foram entregues posteriormente. Diagnóstico detalhado, histórico e progressão permanecem nas etapas 11–14. Não houve confirmação prática de funcionamento ou desempenho.
 - **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
 - **Próxima etapa liberada:** etapa 07, highway e primeiro treino jogável.
 - **Revisão de conclusão — 2026-09-07:** o WIP foi auditado e corrigido para que uma entrada posterior à borda final apenas feche o horizonte, sem criar `extra-strum`, registro ou elegibilidade dependentes da ordem de atualização; `recordInput` agora conclui a sessão nesse mesmo fluxo. A ausência conhecida de direção também é reportada como `unsupported-capability` desde a primeira avaliação. Revisão exclusivamente estática e manual, ainda sem confirmação em execução.
@@ -380,20 +380,32 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Implementar HOPO com elegibilidade por nota e estado de cadeia, conforme `fretsense-v1`.
-- [ ] Exigir o início/recuperação por strum definidos no perfil e tratar strum voluntário em nota HOPO de forma consistente.
-- [ ] Completar regras de tapping, incluindo notas repetidas, alternância e interação com frets mantidos.
-- [ ] Implementar sustains com duração em ticks, estado dos frets mantidos e liberação antecipada.
-- [ ] Separar resultado do início da nota da duração sustentada; definir encerramento do sustain e seu impacto no combo.
-- [ ] Suportar mudanças entre nota simples e acorde, acordes duplos/triplos e articulações diferentes dentro do mesmo trecho.
-- [ ] Implementar avaliação de alternate strum com direção conhecida, primeiro sentido configurável e reinício da alternância após pausas musicais definidas no cenário.
-- [ ] Representar direção indisponível como técnica não avaliada; nunca como falha ou sucesso inventado.
-- [ ] Definir se sobreposições de sustains são suportadas pelo perfil; rejeitar na configuração os padrões ainda não suportados.
-- [ ] Estender highway, eventos e métricas para os novos estados, finalizando a sessão apenas depois das caudas e janelas finais.
+- [x] Implementar HOPO com elegibilidade por nota e estado de cadeia, conforme `fretsense-v1`.
+- [x] Exigir o início/recuperação por strum definidos no perfil e tratar strum voluntário em nota HOPO de forma consistente.
+- [x] Completar regras de tapping, incluindo notas repetidas, alternância e interação com frets mantidos.
+- [x] Implementar sustains com duração em ticks, estado dos frets mantidos e liberação antecipada.
+- [x] Separar resultado do início da nota da duração sustentada; definir encerramento do sustain e seu impacto no combo.
+- [x] Suportar mudanças entre nota simples e acorde, acordes duplos/triplos e articulações diferentes dentro do mesmo trecho.
+- [x] Implementar avaliação de alternate strum com direção conhecida, primeiro sentido configurável e reinício da alternância após pausas musicais definidas no cenário.
+- [x] Representar direção indisponível como técnica não avaliada; nunca como falha ou sucesso inventado.
+- [x] Definir se sobreposições de sustains são suportadas pelo perfil; rejeitar na configuração os padrões ainda não suportados.
+- [x] Estender highway, eventos e métricas para os novos estados, finalizando a sessão apenas depois das caudas e janelas finais.
 
 **Entregáveis:** perfil de regras completo para as técnicas da primeira versão e renderização correspondente.
 
 **Critério de conclusão:** notas, articulações e sustains seguem regras explícitas em cenários isolados e mistos; o modelo de dados inicial permanece suficiente.
+
+**Registro da etapa — 2026-09-07:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** cadeia HOPO com início/recuperação e repetição por strum; tapping por transições reais; caudas concluídas, quebradas, não avaliadas ou canceladas; direção de alternate strum; suporte do julgador a máscaras/articulações variadas e padrão-base misto `articulation-transitions@1.0.0`; encerramento após cabeças, caudas e janela final.
+- **Arquivos:** `src/engine/judgment/initial-judge.ts`, integração em `src/engine/session`, validação em `src/engine/domain/configuration.ts`, padrão-base em `src/engine/generation/generator.ts`, `src/rendering/highway-renderer.ts`, área jogável em `src/{composables,pages,i18n}`, além de `docs/articulations-and-sustains.md` e atualizações documentais.
+- **Decisões relevantes:** o nome público `InitialJudge` foi preservado por compatibilidade; a cadeia HOPO é estado explícito e pausa a desarma. Caudas mantêm evento separado da cabeça, preservam combo ao concluir, zeram uma vez ao quebrar e são canceladas sem falha no abandono. A retomada confere o baseline no tempo congelado. O perfil continua rejeitando sobreposição musical; caudas ativas usam coleção para aceitar uma próxima cabeça antecipada na janela. Direção desconhecida/automática permanece não avaliada.
+- **Interface disponível:** subida/descida por strum, HOPO ou tap; sustains de 120/240 ticks; notas/acordes repetidos; alternate strum de nota simples com primeiro sentido configurável. Círculo, losango, quadrado, setas e linhas de cauda diferenciam os estados na highway.
+- **Revisão realizada:** somente análise estática manual de código, imports, tipos, eventos, invariantes temporais, estados de pausa/abandono, métricas, traduções, documentação e diferenças. Não houve testes, lint, formatação automática, build, typecheck, aplicação, preview ou navegador.
+- **Limitações e pendências:** o cenário misto base é determinístico e não aparece como catálogo completo; composição procedural, novos padrões e níveis pertencem à etapa 09. Aparência, timing, hardware e comportamento em execução ainda não foram confirmados pelo desenvolvedor.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 09, catálogo procedural e níveis.
 
 ### Etapa 09 — Construir catálogo procedural e níveis
 

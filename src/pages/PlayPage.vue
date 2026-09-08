@@ -32,6 +32,16 @@
               <p class="muted-text">{{ t('play.automaticStrumHelp') }}</p>
             </div>
             <q-select v-model="chordSize" :options="chordOptions" emit-value map-options :label="t('play.chordSize')" :disable="starting || patternId === 'ascending-descending'" />
+            <q-select v-model="sustainTicks" :options="sustainOptions" emit-value map-options :label="t('play.sustain')" :disable="starting" />
+            <q-select
+              v-if="patternId === 'repeated-strum' && chordSize === 1"
+              v-model="alternateStrum"
+              :options="alternateOptions"
+              emit-value
+              map-options
+              :label="t('play.strumDirection')"
+              :disable="starting"
+            />
             <q-input v-model.number="bpm" type="number" min="40" max="300" step="1" :label="t('play.bpm')" :disable="starting" />
             <q-input v-model.number="repetitions" type="number" min="1" max="128" step="1" :label="t('play.repetitions')" :disable="starting" />
             <q-select v-model="audioMode" :options="audioOptions" emit-value map-options :label="t('play.audio')" :disable="starting" />
@@ -60,6 +70,7 @@
           <div><span>{{ t('play.notes') }}</span><strong>{{ resolvedNotes }}/{{ snapshot.chart.notes.length }}</strong></div>
           <div><span>{{ t('play.bpm') }}</span><strong>{{ snapshot.chart.bpm }}</strong></div>
           <div><span>{{ t('play.input') }}</span><strong>{{ view.inputCount }}</strong></div>
+          <div v-if="evaluation?.pendingSustains"><span>{{ t('play.pendingSustains') }}</span><strong>{{ evaluation.pendingSustains }}</strong></div>
         </section>
         <q-linear-progress :value="progress" color="primary" track-color="grey-9" size="8px" rounded :aria-label="t('play.progress')" />
         <div class="highway-stage">
@@ -91,7 +102,11 @@
           <div><span>{{ t('play.hits') }}</span><strong>{{ result.metrics.hitNotes }}/{{ result.metrics.plannedNotes }}</strong></div>
           <div><span>{{ t('play.bestCombo') }}</span><strong>{{ result.metrics.bestCombo }}</strong></div>
           <div><span>{{ t('play.meanTiming') }}</span><strong>{{ timingLabel }}</strong></div>
+          <div><span>{{ t('play.articulationCompliance') }}</span><strong>{{ ratioLabel(result.metrics.articulationCompliance) }}</strong></div>
           <div><span>{{ t('play.extraStrums') }}</span><strong>{{ result.metrics.extraStrums }}</strong></div>
+          <div v-if="snapshot.config.sustainTicks > 0"><span>{{ t('play.sustainCompletion') }}</span><strong>{{ ratioLabel(result.metrics.sustainCompletion) }}</strong></div>
+          <div v-if="snapshot.config.sustainTicks > 0"><span>{{ t('play.brokenSustains') }}</span><strong>{{ result.metrics.brokenSustains }}</strong></div>
+          <div v-if="snapshot.config.strumDirectionGoal.kind !== 'none'"><span>{{ t('play.directionCompliance') }}</span><strong>{{ ratioLabel(result.metrics.strumDirectionCompliance) }}</strong></div>
           <div><span>{{ t('play.duration') }}</span><strong>{{ durationLabel }}</strong></div>
         </div>
         <p v-if="result.interruptions.length" class="muted-text">{{ t('play.interruptions', { count: result.interruptions.length }) }}</p>
@@ -122,7 +137,7 @@ const router = useRouter();
 const training = useTrainingSession();
 const {
   captureArea, profileId, profile, connectionId, matchingConnections, patternId, articulation, automaticStrum,
-  chordSize, bpm, repetitions, audioMode, calibrationId, availableCalibrations,
+  chordSize, sustainTicks, alternateStrum, bpm, repetitions, audioMode, calibrationId, availableCalibrations,
   discoveryUnavailable, starting, failure, snapshot, view, evaluation, judgments,
   latestJudgment, result, state, isActive, isPaused, isFinished, countdownBeat,
   resolvedNotes, progress, refreshDevices, startAttempt, pause, resume, restart, repeat, leave, reset,
@@ -136,9 +151,22 @@ const patternOptions = computed(() => [
 ]);
 const articulationOptions = computed(() => [
   { value: 'strum', label: t('play.strum') },
-  ...(patternId.value === 'ascending-descending' ? [{ value: 'tap', label: t('play.tap') }] : []),
+  ...(patternId.value === 'ascending-descending' ? [
+    { value: 'hopo', label: t('play.hopo') },
+    { value: 'tap', label: t('play.tap') },
+  ] : []),
 ]);
 const chordOptions = computed(() => [1, 2, 3].map((value) => ({ value, label: t('play.fretCount', { count: value }) })));
+const sustainOptions = computed(() => [
+  { value: 0, label: t('play.sustainNone') },
+  { value: 120, label: t('play.sustainSixteenth') },
+  { value: 240, label: t('play.sustainEighth') },
+]);
+const alternateOptions = computed(() => [
+  { value: 'none', label: t('play.directionNone') },
+  { value: 'down', label: t('play.directionDownFirst') },
+  { value: 'up', label: t('play.directionUpFirst') },
+]);
 const audioOptions = computed(() => [
   { value: 'enabled', label: t('play.audioEnabled') },
   { value: 'silent', label: t('play.audioSilent') },
@@ -154,6 +182,10 @@ const feedbackText = computed(() => {
   const event = latestJudgment.value;
   if (!event) return t('play.feedbackReady');
   if (event.kind === 'note-hit') {
+    const techniqueFailure = event.technique.find((assessment) => assessment.outcome === 'failed');
+    if (techniqueFailure?.reason === 'voluntary-strum-on-hopo') return t('play.feedbackTechnique.hopoStrum');
+    if (techniqueFailure?.reason === 'strum-used-for-tap') return t('play.feedbackTechnique.tapStrum');
+    if (techniqueFailure?.reason === 'wrong-strum-direction') return t('play.feedbackTechnique.direction');
     const error = event.timingErrorMs;
     if (Math.abs(error) <= 15) return t('play.feedbackExact');
     return t(error < 0 ? 'play.feedbackEarly' : 'play.feedbackLate', { ms: Math.round(Math.abs(error)) });
@@ -161,6 +193,7 @@ const feedbackText = computed(() => {
   if (event.kind === 'extra-strum') return t('play.feedbackExtra');
   if (event.kind === 'note-miss') return t(event.cause === 'wrong-frets' ? 'play.feedbackFrets'
     : event.cause === 'missing-strum' ? 'play.feedbackStrum' : 'play.feedbackMiss');
+  if (event.kind === 'sustain') return t(`play.feedbackSustain.${event.outcome}`);
   return t('play.feedbackReady');
 });
 const timingLabel = computed(() => {
@@ -190,7 +223,7 @@ async function exitPractice() { await leave(); await router.push({ name: 'train'
 .practice-context p + p { margin-top: 6px; }
 .practice-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .practice-actions--centered { justify-content: center; margin-top: 22px; }
-.gameplay-status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.gameplay-status { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
 .gameplay-status > div, .result-metrics > div { padding: 12px 14px; border: 1px solid var(--fs-border); border-radius: 10px; background: var(--fs-surface); }
 .gameplay-status span, .result-metrics span { display: block; color: var(--fs-muted); font-size: 0.75rem; }
 .gameplay-status strong, .result-metrics strong { display: block; margin-top: 2px; font-size: 1.15rem; }

@@ -1,10 +1,10 @@
 # Julgamento inicial — etapa 06
 
-**Estado:** implementação concluída e revisada somente por análise estática manual. Não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou verificações no navegador. Funcionamento em execução permanece sem confirmação do desenvolvedor.
+**Estado:** registro histórico da etapa 06, revisado somente por análise estática manual. O julgador foi ampliado na etapa 08; consulte [articulações e sustains](./articulations-and-sustains.md) para o escopo atual. Funcionamento em execução permanece sem confirmação do desenvolvedor.
 
 ## Escopo disponível
 
-`src/engine/judgment/initial-judge.ts` implementa `InitialJudge`, com o perfil `fretsense-v1@1.0.0`: notas simples de strum/tap e acordes de dois ou três frets por strum, sem caudas. O construtor valida o snapshot, suas regras e a chart contra a geração canônica, captura cópias imutáveis e rejeita HOPO ou sustains com `EngineError / unsupported`. Esses recursos continuam na etapa 08; não são avaliados parcialmente nem convertidos silenciosamente em strum.
+Na etapa 06, `src/engine/judgment/initial-judge.ts` introduziu `InitialJudge` para notas de strum/tap e acordes sem caudas. A etapa 08 preservou esse nome público e ampliou a mesma classe para HOPO e sustains segundo `fretsense-v1@1.0.0`. O construtor continua validando o snapshot, suas regras e a chart contra a geração canônica e capturando cópias imutáveis.
 
 Os padrões iniciais da etapa 03 continuam delimitando as charts aceitas. Não há importação de charts arbitrárias nem ampliação do catálogo nesta etapa. A etapa 07 passou a oferecer a interface jogável, seleção das articulações disponíveis e resultado básico.
 
@@ -48,11 +48,11 @@ Tap exige pressionamento/liberação real e estado final exato. Manter um fret n
 - Articulação `passed / (passed + failed)` nos hits. Técnica falha não altera o acerto nem zera combo.
 - Direção exigida por nota: compara direções conhecidas, preserva `unknown` como não avaliada e não desloca as direções planejadas após erros. Uma lacuna em meta obrigatória impede declarar dados técnicos completos.
 - Quando a chart exige direção e o snapshot declara strum não direcional, a métrica nasce como `unsupported-capability`; não é necessário esperar um hit para reconhecer uma capacidade já ausente.
-- Sustains como `not-applicable`, pois charts com cauda são rejeitadas antes da tentativa julgada.
+- Na entrega da etapa 06, sustains eram `not-applicable`; a etapa 08 passou a produzir conclusão, quebra, cancelamento e indisponibilidade de cauda.
 
 Denominador zero produz `unavailable`, não 0% ou 100%. Uma amostra permite média e desvio populacional zero, sem inferir consistência. Metas e promoção continuam separadas das métricas. Inicialmente, antes da primeira entrada/avanço, o relatório tem horizonte sentinela de −1.000 ms e todas as notas não julgadas; a sessão só publica avaliação ao processar tempo de execução.
 
-O trabalho de associação é constante por entrada, além das notas que expiram; cada nota expira/é consumida uma vez. Tempos musicais e aplicabilidade da direção são calculados na preparação. Não há varredura da chart inteira por frame ou entrada. Os limites existentes são 4.096 notas, 65.536 entradas e 131.072 registros; sem caudas, no máximo um resultado de início por nota e um extra por entrada cabem nesse buffer. Registros não são sobrescritos. Consultar todos os eventos copia apenas a coleção; deve ser reservado ao consumo de registros, não usado como cálculo de métricas a cada frame.
+O trabalho de associação é constante por entrada, além das notas/caudas resolvidas naquele horizonte; cada cabeça e cauda é consumida uma vez. Tempos musicais e aplicabilidade da direção são calculados na preparação. Não há varredura da chart inteira por frame ou entrada. Os limites existentes são 4.096 notas, 65.536 entradas e 131.072 registros; cabeças, caudas e extras cabem nesse buffer sem sobrescrita. Consultar todos os eventos copia apenas a coleção; deve ser reservado ao consumo de registros, não usado como cálculo de métricas a cada frame.
 
 ## Integração com a sessão
 
@@ -68,4 +68,4 @@ Pausa avança somente até o instante de interrupção, processa prazos já venc
 
 ## Próxima integração
 
-A etapa 07 conectou seleção do exercício, entrada, áudio, highway e resultado em memória, conforme [treino jogável](./playable-training.md). HOPO, sustains e cenários completos de articulações permanecem na etapa 08. A independência de taxa de frames continua sem confirmação em execução; foi revisada somente na lógica temporal e na ordem dos contratos.
+A etapa 07 conectou seleção do exercício, entrada, áudio, highway e resultado em memória, conforme [treino jogável](./playable-training.md). A etapa 08 completou HOPO, sustains, direção e seus estados visuais; cenários procedurais completos permanecem na etapa 09. A independência de taxa de frames continua sem confirmação em execução; foi revisada somente na lógica temporal e na ordem dos contratos.

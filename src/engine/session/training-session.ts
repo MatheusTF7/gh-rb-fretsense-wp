@@ -74,7 +74,7 @@ export class TrainingSession {
   getJudgments(): readonly JudgmentEvent[] { return this.judge?.getEvents() ?? Object.freeze([]); }
   getEvaluation(): SessionEvaluation | null { return this.evaluation; }
 
-  /** Ativação explícita antes da contagem; rejeita HOPO/caudas ainda não implementados. */
+  /** Ativação explícita do julgamento fretsense-v1 antes da contagem. */
   enableInitialJudgment(): void {
     this.requireState('ready');
     if (this.judge) return;
@@ -348,6 +348,7 @@ export class TrainingSession {
     this.countdownRemainingMs = Math.max(0, deadline - now);
     if (now < deadline) return false;
     this.closeInterruption();
+    this.judge?.resume();
     this.runningSinceMs = deadline;
     this.countdownEndsAtMs = null;
     this.state = 'running';
@@ -388,6 +389,10 @@ export class TrainingSession {
   private finish(ending: SessionEnding): SessionResult {
     if (this.result !== null) return this.result;
     const snapshot = this.requireSnapshot();
+    if (ending.state === 'aborted' && this.judge) {
+      this.judge.abort();
+      this.evaluation = this.judge.getEvaluation();
+    }
     const evaluation = this.evaluation;
     const metrics = evaluation?.metrics ?? createUnjudgedMetrics(snapshot.chart.notes.length);
     const judgmentRecords = evaluation?.judgmentRecords ?? 'not-recorded';

@@ -40,9 +40,11 @@ export function useTrainingSession() {
   const captureArea = ref<HTMLElement | null>(null);
   const profileId = ref(ui.selectedProfileId);
   const patternId = ref<'ascending-descending' | 'repeated-strum'>('ascending-descending');
-  const articulation = ref<Extract<Articulation, 'strum' | 'tap'>>('strum');
+  const articulation = ref<Articulation>('strum');
   const automaticStrum = ref(true);
   const chordSize = ref<1 | 2 | 3>(1);
+  const sustainTicks = ref<0 | 120 | 240>(0);
+  const alternateStrum = ref<'none' | 'down' | 'up'>('none');
   const bpm = ref<number | string | null>(120);
   const repetitions = ref<number | string | null>(4);
   const audioMode = ref<'enabled' | 'silent'>('enabled');
@@ -117,22 +119,32 @@ export function useTrainingSession() {
     const ascending = patternId.value === 'ascending-descending';
     const chosenArticulation = ascending ? articulation.value : 'strum';
     const chosenChordSize = ascending ? 1 : chordSize.value;
+    const alternates = !ascending && chosenChordSize === 1 && alternateStrum.value !== 'none';
+    const technique = ascending
+      ? chosenArticulation === 'hopo' ? 'hopo'
+        : chosenArticulation === 'tap' ? 'tapping'
+          : sustainTicks.value > 0 ? 'sustains' : 'sequences'
+      : alternates ? 'alternate-strum'
+        : sustainTicks.value > 0 ? 'sustains'
+          : chosenChordSize === 1 ? 'single-strum' : 'chords';
     return parseDrillConfig({
       schemaVersion: 1,
-      technique: ascending ? chosenArticulation === 'tap' ? 'tapping' : 'sequences'
-        : chosenChordSize === 1 ? 'single-strum' : 'chords',
+      technique,
       level: 'beginner',
       pattern: ascending ? ASCENDING_DESCENDING_PATTERN : REPEATED_STRUM_PATTERN,
       bpm: Number(bpm.value), subdivision: 2, allowedFrets: 31,
       patternLength: ascending ? 10 : 4,
       length: { kind: 'repetitions', count: Number(repetitions.value) },
       articulation: chosenArticulation, automaticStrum: automaticStrum.value, chordSize: chosenChordSize,
-      sustainTicks: 0, strumDirectionGoal: { kind: 'none' },
+      sustainTicks: sustainTicks.value,
+      strumDirectionGoal: alternates && alternateStrum.value !== 'none'
+        ? { kind: 'alternate', firstDirection: alternateStrum.value, resetAfterRestTicks: 480 }
+        : { kind: 'none' },
       goals: {
         minimumAccuracy: 0.9, maximumErrors: 4, consistentAttempts: 3,
-        requireArticulation: true, requireStrumDirection: false, requireFullSustains: false,
+        requireArticulation: true, requireStrumDirection: alternates, requireFullSustains: sustainTicks.value > 0,
       },
-      seed: `playable-v1:${patternId.value}:${chosenArticulation}:${chosenChordSize}`,
+      seed: `playable-v2:${patternId.value}:${chosenArticulation}:${chosenChordSize}:${sustainTicks.value}:${alternateStrum.value}`,
       ruleProfile: FRETSENSE_V1_RULE_PROFILE,
     });
   }
@@ -369,7 +381,9 @@ export function useTrainingSession() {
   watch(patternId, (pattern) => {
     if (pattern === 'ascending-descending') chordSize.value = 1;
     else articulation.value = 'strum';
+    if (pattern === 'ascending-descending') alternateStrum.value = 'none';
   });
+  watch(chordSize, (size) => { if (size > 1) alternateStrum.value = 'none'; });
 
   onMounted(() => {
     discovery = new GamepadDiscovery();
@@ -392,7 +406,8 @@ export function useTrainingSession() {
 
   return {
     ui, calibrations, captureArea, profileId, profile, connectionId, matchingConnections,
-    patternId, articulation, automaticStrum, chordSize, bpm, repetitions, audioMode, calibrationId,
+    patternId, articulation, automaticStrum, chordSize, sustainTicks, alternateStrum,
+    bpm, repetitions, audioMode, calibrationId,
     availableCalibrations, discoveryUnavailable, starting, failure, snapshot, view,
     evaluation, judgments, latestJudgment, result, configurationLocked, state, isActive,
     isPaused, isFinished, countdownBeat, resolvedNotes, progress,

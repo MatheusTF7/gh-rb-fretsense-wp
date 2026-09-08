@@ -129,7 +129,9 @@ export function createSessionSnapshot(
   requireCondition(sameReference(calibration.deviceProfile, device), 'calibration.deviceProfile', 'Calibration belongs to another device profile/version.');
   requireCondition(device.capabilities.maximumSimultaneousFrets === null || device.capabilities.maximumSimultaneousFrets >= config.chordSize,
     'device.capabilities.maximumSimultaneousFrets', 'Device cannot hold this chord size.');
-  requireCondition(config.articulation === 'tap' || config.automaticStrum || device.capabilities.strum !== 'unavailable',
+  requireCondition(config.articulation === 'tap'
+    || (config.articulation === 'strum' && config.automaticStrum)
+    || device.capabilities.strum !== 'unavailable',
     'device.capabilities.strum', 'This exercise requires a strum action.');
   return immutableCopy({
     schemaVersion: 1,

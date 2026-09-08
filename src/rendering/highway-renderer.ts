@@ -1,4 +1,4 @@
-import type { Chart, Fret, FretMask, JudgmentEvent } from '@/engine/domain';
+import type { Articulation, Chart, Fret, FretMask, JudgmentEvent, StrumDirection } from '@/engine/domain';
 import { FRET_BITS } from '@/engine/domain/music';
 import { ticksToMilliseconds, visualTime } from '@/engine/timing';
 
@@ -10,8 +10,14 @@ const COLORS: Readonly<Record<Fret, string>> = {
 interface ScheduledNote {
   readonly id: string;
   readonly timeMs: number;
+  readonly endTimeMs: number;
   readonly frets: FretMask;
+  readonly articulation: Articulation;
+  readonly expectedStrumDirection: StrumDirection | null;
 }
+
+type NoteStatus = 'hit' | 'miss';
+type SustainStatus = Extract<JudgmentEvent, { kind: 'sustain' }>['outcome'];
 
 export interface HighwayFrame {
   readonly chart: Chart;
@@ -27,7 +33,7 @@ function lowerBound(notes: readonly ScheduledNote[], timeMs: number): number {
   let high = notes.length;
   while (low < high) {
     const middle = (low + high) >>> 1;
-    if ((notes[middle]?.timeMs ?? Number.POSITIVE_INFINITY) < timeMs) low = middle + 1;
+    if ((notes[middle]?.endTimeMs ?? Number.POSITIVE_INFINITY) < timeMs) low = middle + 1;
     else high = middle;
   }
   return low;
@@ -38,7 +44,8 @@ export class HighwayRenderer {
   private chart: Chart | null = null;
   private scheduled: readonly ScheduledNote[] = [];
   private judgments: readonly JudgmentEvent[] | null = null;
-  private readonly resolved = new Map<string, 'hit' | 'miss'>();
+  private readonly resolved = new Map<string, NoteStatus>();
+  private readonly sustains = new Map<string, SustainStatus>();
 
   constructor(private readonly canvas: HTMLCanvasElement) {}
 
@@ -98,12 +105,20 @@ export class HighwayRenderer {
       const note = this.scheduled[index];
       if (!note || note.timeMs > visualTimeMs + futureMs) break;
       const y = hitY - (note.timeMs - visualTimeMs) * pixelsPerMs;
+      const endY = hitY - (note.endTimeMs - visualTimeMs) * pixelsPerMs;
       const status = this.resolved.get(note.id);
+      const sustainStatus = this.sustains.get(note.id);
       for (let laneIndex = 0; laneIndex < FRETS.length; laneIndex += 1) {
         const fret = FRETS[laneIndex];
         if (!fret || !(note.frets & FRET_BITS[fret])) continue;
         const x = padding + laneWidth * (laneIndex + 0.5);
-        this.note(context, x, y, Math.min(18, laneWidth * 0.25), fret, status, text);
+        if (note.endTimeMs > note.timeMs) {
+          this.tail(context, x, y, endY, Math.min(11, laneWidth * 0.15), fret, status, sustainStatus);
+        }
+        this.note(
+          context, x, y, Math.min(18, laneWidth * 0.25), fret,
+          note.articulation, note.expectedStrumDirection, status, text,
+        );
       }
     }
 
@@ -143,40 +158,91 @@ export class HighwayRenderer {
     if (this.chart === chart) return;
     this.chart = chart;
     this.scheduled = chart.notes.map((note) => ({
-      id: note.id, timeMs: ticksToMilliseconds(note.tick, chart.bpm), frets: note.frets,
+      id: note.id,
+      timeMs: ticksToMilliseconds(note.tick, chart.bpm),
+      endTimeMs: ticksToMilliseconds(note.tick + note.durationTicks, chart.bpm),
+      frets: note.frets,
+      articulation: note.articulation,
+      expectedStrumDirection: note.expectedStrumDirection,
     }));
     this.judgments = null;
     this.resolved.clear();
+    this.sustains.clear();
   }
 
   private prepareJudgments(judgments: readonly JudgmentEvent[]): void {
     if (this.judgments === judgments) return;
     this.judgments = judgments;
     this.resolved.clear();
+    this.sustains.clear();
     for (const event of judgments) {
       if (event.kind === 'note-hit') this.resolved.set(event.noteId, 'hit');
       else if (event.kind === 'note-miss') this.resolved.set(event.noteId, 'miss');
+      else if (event.kind === 'sustain') this.sustains.set(event.noteId, event.outcome);
     }
   }
 
+  private tail(
+    context: CanvasRenderingContext2D,
+    x: number,
+    headY: number,
+    endY: number,
+    width: number,
+    fret: Fret,
+    noteStatus: NoteStatus | undefined,
+    sustainStatus: SustainStatus | undefined,
+  ): void {
+    context.save();
+    context.globalAlpha = noteStatus === 'miss' || sustainStatus === 'cancelled' || sustainStatus === 'not-evaluated' ? 0.25
+      : sustainStatus === 'completed' ? 0.35 : 0.78;
+    context.strokeStyle = sustainStatus === 'broken' ? '#ffffff' : COLORS[fret];
+    context.lineWidth = width;
+    context.lineCap = 'round';
+    if (sustainStatus === 'broken') context.setLineDash([7, 7]);
+    context.beginPath();
+    context.moveTo(x, headY);
+    context.lineTo(x, endY);
+    context.stroke();
+    context.restore();
+  }
+
   private note(
-    context: CanvasRenderingContext2D, x: number, y: number, radius: number,
-    fret: Fret, status: 'hit' | 'miss' | undefined, text: string,
+    context: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    fret: Fret,
+    articulation: Articulation,
+    direction: StrumDirection | null,
+    status: NoteStatus | undefined,
+    text: string,
   ): void {
     context.save();
     context.globalAlpha = status ? 0.32 : 1;
     context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
+    if (articulation === 'tap') {
+      context.rect(x - radius * 0.78, y - radius * 0.78, radius * 1.56, radius * 1.56);
+    } else if (articulation === 'hopo') {
+      context.moveTo(x, y - radius);
+      context.lineTo(x + radius, y);
+      context.lineTo(x, y + radius);
+      context.lineTo(x - radius, y);
+      context.closePath();
+    } else {
+      context.arc(x, y, radius, 0, Math.PI * 2);
+    }
     context.fillStyle = COLORS[fret];
     context.fill();
     context.strokeStyle = status === 'miss' ? '#ffffff' : '#15221a';
-    context.lineWidth = status === 'miss' ? 4 : 2;
+    context.lineWidth = status === 'miss' ? 4 : articulation === 'hopo' ? 3 : 2;
     context.stroke();
     context.fillStyle = status === 'miss' ? text : '#15221a';
-    context.font = '700 12px Roboto, sans-serif';
+    context.font = '700 11px Roboto, sans-serif';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText(fret, x, y);
+    const symbol = articulation === 'hopo' ? 'H' : articulation === 'tap' ? 'T'
+      : direction === 'down' ? '↓' : direction === 'up' ? '↑' : fret;
+    context.fillText(symbol, x, y);
     context.restore();
   }
 }
