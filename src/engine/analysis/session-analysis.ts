@@ -208,8 +208,10 @@ export function analyzeSession(
 ): SessionAnalysisReport {
   const noteById = new Map(snapshot.chart.notes.map((note) => [note.id, note]));
   const inputBySequence = new Map(inputs.map((input) => [input.sequence, input]));
-  const noteJudgments = judgments.filter((event): event is Extract<JudgmentEvent, { kind: 'note-hit' | 'note-miss' }>
-    => event.kind === 'note-hit' || event.kind === 'note-miss');
+  const noteJudgments = judgments.filter(
+    (event): event is Extract<JudgmentEvent, { kind: 'note-hit' | 'note-miss' }> =>
+      event.kind === 'note-hit' || event.kind === 'note-miss',
+  );
   const expected = noteJudgments.flatMap((judgment) => {
     const note = noteById.get(judgment.noteId);
     return note ? [{ note, judgment, timeMs: ticksToMilliseconds(note.tick, snapshot.chart.bpm) }] : [];
@@ -347,8 +349,10 @@ export function analyzeSession(
         hitEvents.map((event) => event.inputSequence), hitEvents.map((event) => event.sequence)));
   }
 
-  const sustainEvents = judgments.filter((event): event is Extract<JudgmentEvent, { kind: 'sustain' }>
-    => event.kind === 'sustain' && (event.outcome === 'completed' || event.outcome === 'broken'));
+  const sustainEvents = judgments.filter(
+    (event): event is Extract<JudgmentEvent, { kind: 'sustain' }> =>
+      event.kind === 'sustain' && (event.outcome === 'completed' || event.outcome === 'broken'),
+  );
   for (const event of sustainEvents) {
     if (event.outcome === 'broken') addDiagnostic('sustain-short', 'observed', sustainEvents.length,
       evidence(snapshot.id, [event.noteId], event.inputSequence === null ? [] : [event.inputSequence], [event.sequence]));

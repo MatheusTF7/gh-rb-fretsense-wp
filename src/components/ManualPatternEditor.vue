@@ -80,7 +80,7 @@ const fretOptions = (Object.keys(FRET_BITS) as Fret[]).map((fret) => ({
 const articulationOptions = (['strum', 'hopo', 'tap'] as const).map((value) => ({ value, label: t(`play.${value}`) }));
 
 function fretMask(frets: readonly Fret[]): NoteFrets {
-  return frets.reduce((mask, fret) => mask | FRET_BITS[fret], 0) as NoteFrets;
+  return frets.reduce<number>((mask, fret) => mask | FRET_BITS[fret], 0) as NoteFrets;
 }
 
 function addStep(): void {
@@ -110,7 +110,7 @@ const preview = computed(() => {
       segmentId: row.segmentId,
     }));
     const hasSustain = steps.some(({ durationTicks }) => durationTicks > 0);
-    const usedFrets = steps.reduce((mask, step) => mask | step.frets, 0) as NoteFrets;
+    const usedFrets = steps.reduce<number>((mask, step) => mask | step.frets, 0) as NoteFrets;
     const chordSize = Math.max(1, ...steps.map((step) => countFrets(step.frets))) as 1 | 2 | 3;
     const articulations = new Set(steps.map((step) => step.articulation));
     const articulation = articulations.size === 1 ? (steps[0]?.articulation ?? 'mixed') : 'mixed';

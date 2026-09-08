@@ -251,7 +251,6 @@ export class IndexedDbSessionRepository implements SessionRepository, Adaptation
       transaction.objectStore(SUMMARY_STORE).delete(id);
       if (adaptationKey !== undefined) {
         transaction.objectStore(ADAPTATION_STORE).delete(adaptationKey);
-        this.adaptationMemory.delete(String(adaptationKey));
       }
       await transactionDone(transaction);
       this.persistedIds.delete(id);

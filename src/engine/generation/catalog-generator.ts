@@ -99,11 +99,16 @@ function uniform(values: readonly NoteFrets[], articulation: Articulation, units
   };
 }
 
+function unsupportedPattern(value: never): never {
+  void value;
+  throw new Error('Unhandled catalog pattern.');
+}
+
 function createTemplate(config: DrillConfig, random: SeededRandom): PatternTemplate {
   const id = config.pattern.id as CatalogPatternId;
   const frets = rotated(singleFrets(config), random);
   const first = frets[0] as NoteFrets;
-  const second = frets[1] as NoteFrets | undefined;
+  const second = frets[1] as NoteFrets;
   requireCondition(second !== undefined, 'config.allowedFrets', 'Pattern requires at least two frets.');
 
   switch (id) {
@@ -227,8 +232,9 @@ function createTemplate(config: DrillConfig, random: SeededRandom): PatternTempl
         step(13, first, 'tap', 'complete-c'), step(14, (doubles[1] ?? doubles[0]) as NoteFrets, 'strum', 'complete-c'),
       ] };
     }
+    default:
+      return unsupportedPattern(id);
   }
-  throw new Error(`Unhandled catalog pattern: ${id}`);
 }
 
 function validateTemplate(config: DrillConfig, template: PatternTemplate, stepTicks: number): void {

@@ -185,7 +185,7 @@ export function useTrainingSession() {
     ? resolvedNotes.value / snapshot.value.chart.notes.length : 0);
 
   function fretMask(): NoteFrets {
-    return allowedFrets.value.reduce((mask, fret) => mask | FRET_BITS[fret], 0) as NoteFrets;
+    return allowedFrets.value.reduce<number>((mask, fret) => mask | FRET_BITS[fret], 0) as NoteFrets;
   }
 
   function loadConfig(config: DrillConfig): void {
