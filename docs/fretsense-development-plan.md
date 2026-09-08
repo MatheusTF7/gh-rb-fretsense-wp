@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–08 revisadas estaticamente, sem confirmação em execução. Etapas 09–20 pendentes.
+**Status:** etapas 01–09 revisadas estaticamente, sem confirmação em execução. Etapas 10–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -413,21 +413,31 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Criar descritores de técnica com objetivo, parâmetros permitidos, capacidades necessárias e métricas relevantes.
-- [ ] Implementar geradores de strum simples/alternado: repetição, mudanças de fret, rajadas e pausas.
-- [ ] Implementar sequências ascendentes/descendentes, trills, zig-zags, escadas, saltos e mudanças de direção.
-- [ ] Implementar padrões de HOPO e tapping, diferenciando geometria do padrão e articulação da nota.
-- [ ] Implementar acordes duplos/triplos, trocas de acordes e alternância entre acordes e notas simples.
-- [ ] Implementar sustains e composição de cenários mistos com identificação dos trechos e transições.
-- [ ] Criar presets inicial, intermediário e avançado por família; expressar dificuldade por estrutura, densidade e transições, além do BPM.
-- [ ] Acrescentar subdivisões regulares e tercinas respeitando a resolução musical escolhida.
-- [ ] Garantir que mutações respeitem frets permitidos, capacidades, articulações e limites de simultaneidade.
-- [ ] Oferecer edição simples de padrões manuais pelo mesmo modelo, com limites de tamanho e feedback de configuração inválida.
-- [ ] Versionar catálogo e geradores; manter a chart realizada no snapshot para reprodução mesmo após atualização do algoritmo.
+- [x] Criar descritores de técnica com objetivo, parâmetros permitidos, capacidades necessárias e métricas relevantes.
+- [x] Implementar geradores de strum simples/alternado: repetição, mudanças de fret, rajadas e pausas.
+- [x] Implementar sequências ascendentes/descendentes, trills, zig-zags, escadas, saltos e mudanças de direção.
+- [x] Implementar padrões de HOPO e tapping, diferenciando geometria do padrão e articulação da nota.
+- [x] Implementar acordes duplos/triplos, trocas de acordes e alternância entre acordes e notas simples.
+- [x] Implementar sustains e composição de cenários mistos com identificação dos trechos e transições.
+- [x] Criar presets inicial, intermediário e avançado por família; expressar dificuldade por estrutura, densidade e transições, além do BPM.
+- [x] Acrescentar subdivisões regulares e tercinas respeitando a resolução musical escolhida.
+- [x] Garantir que mutações respeitem frets permitidos, capacidades, articulações e limites de simultaneidade.
+- [x] Oferecer edição simples de padrões manuais pelo mesmo modelo, com limites de tamanho e feedback de configuração inválida.
+- [x] Versionar catálogo e geradores; manter a chart realizada no snapshot para reprodução mesmo após atualização do algoritmo.
 
 **Entregáveis:** catálogo de técnicas, presets e geradores reproduzíveis.
 
 **Critério de conclusão:** cada família listada na ideia tem exercícios em três níveis, objetivo identificável e geração compatível com o perfil selecionado.
+
+**Registro da etapa — 2026-09-07:**
+
+- **Catálogo e contratos:** `fretsense-catalog@1.0.0` reúne 24 presets e descritores das oito famílias, com objetivos traduzidos, parâmetros, requisitos e métricas. O catálogo visível apresenta os três níveis de cada família.
+- **Geração:** `procedural-catalog@1.0.0` cobre repetição, trocas, rajadas/pausas, HOPO, tapping, escadas, zigue-zagues, saltos, acordes, sustains e trechos mistos. Subdivisões regulares e tercinas usam a grade de 480 ticks; seed, versão e configuração determinam a chart.
+- **Variações e padrões manuais:** variações aceitam apenas parâmetros delimitados e validam a chart materializada. `manual-pattern@1.0.0` usa o mesmo modelo de notas e trechos, com parser limitado e editor que informa campo e motivo de configurações inválidas.
+- **Reprodutibilidade:** snapshots continuam contendo a chart completa. Geradores e referências de catálogo/padrão são versionados; versões existentes devem permanecer disponíveis quando o algoritmo evoluir.
+- **Validação:** revisão exclusivamente estática e manual de contratos, imports, tipos, invariantes, presets e fluxos. Nenhum lint, teste, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** escolher um preset para iniciar uma sessão, configurações avançadas, prévia e modos completos pertencem à etapa 10. Aparência, interação, timing e hardware ainda não foram confirmados em execução.
+- **Próxima etapa liberada:** etapa 10, prática e avaliação completas.
 
 ### Etapa 10 — Completar os modos prática e avaliação
 

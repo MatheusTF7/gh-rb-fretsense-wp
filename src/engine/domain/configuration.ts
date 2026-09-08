@@ -1,16 +1,55 @@
-import type { DrillConfig, StrumDirectionGoal } from './drill';
+import type { DrillConfig, ManualPattern, StrumDirectionGoal } from './drill';
+import { MANUAL_PATTERN_REFERENCE } from './drill';
 import { TICKS_PER_QUARTER } from './music';
 import { FRETSENSE_V1_RULE_PROFILE } from './rules';
 import { ENGINE_LIMITS as limits } from './limits';
 import { immutableCopy } from './immutable';
 import {
-  countFrets, readBoolean, readChoice, readInteger, readNoteFrets, readNumber,
+  countFrets, readArray, readBoolean, readChoice, readInteger, readNoteFrets, readNumber,
   readRecord, readReference, readString, requireCondition, sameReference,
 } from './validation';
 
 export const TECHNIQUES = [
   'single-strum', 'alternate-strum', 'hopo', 'tapping', 'sequences', 'chords', 'sustains', 'mixed',
 ] as const;
+
+function parseManualPattern(value: unknown, config: DrillConfig): ManualPattern {
+  const pattern = readRecord(value, 'config.manualPattern');
+  const lengthTicks = readInteger(pattern.lengthTicks, 'config.manualPattern.lengthTicks', 1, limits.maximumTicks);
+  const steps = readArray(pattern.steps, 'config.manualPattern.steps', limits.maximumPatternLength)
+    .map((value, index) => {
+      const path = `config.manualPattern.steps[${index}]`;
+      const step = readRecord(value, path);
+      const frets = readNoteFrets(step.frets, `${path}.frets`);
+      const articulation = readChoice(step.articulation, ['strum', 'hopo', 'tap'], `${path}.articulation`);
+      requireCondition((frets & config.allowedFrets) === frets, `${path}.frets`, 'Step uses a disabled fret.');
+      requireCondition(countFrets(frets) <= config.chordSize, `${path}.frets`, 'Step exceeds the configured chord size.');
+      requireCondition(countFrets(frets) === 1 || articulation === 'strum', `${path}.articulation`, 'Chords require strum.');
+      requireCondition(config.articulation === 'mixed' || articulation === config.articulation,
+        `${path}.articulation`, 'Step articulation conflicts with the configuration.');
+      return {
+        tick: readInteger(step.tick, `${path}.tick`, 0, lengthTicks - 1),
+        frets,
+        durationTicks: readInteger(step.durationTicks, `${path}.durationTicks`, 0, lengthTicks),
+        articulation,
+        segmentId: readString(step.segmentId, `${path}.segmentId`),
+      };
+    });
+  requireCondition(steps.length > 0 && steps.length === config.patternLength,
+    'config.manualPattern.steps', 'Manual steps must match patternLength.');
+  for (const [index, step] of steps.entries()) {
+    const next = steps[index + 1];
+    requireCondition(index === 0 ? step.tick === 0 : (steps[index - 1]?.tick ?? -1) < step.tick,
+      `config.manualPattern.steps[${index}].tick`, 'Manual ticks must start at zero and increase.');
+    requireCondition(step.tick + step.durationTicks <= (next?.tick ?? lengthTicks),
+      `config.manualPattern.steps[${index}].durationTicks`, 'Manual sustains cannot overlap the next step or pattern end.');
+  }
+  return immutableCopy({
+    schemaVersion: readChoice(pattern.schemaVersion, [1], 'config.manualPattern.schemaVersion'),
+    lengthTicks,
+    steps,
+  });
+}
 
 /** Aceita dados desconhecidos e devolve apenas os campos reconhecidos, copiados e congelados. */
 export function parseDrillConfig(value: unknown): DrillConfig {
@@ -32,7 +71,7 @@ export function parseDrillConfig(value: unknown): DrillConfig {
     };
   }
   const goals = readRecord(config.goals, 'config.goals');
-  const parsed: DrillConfig = {
+  let parsed: DrillConfig = {
     schemaVersion: readChoice(config.schemaVersion, [1], 'config.schemaVersion'),
     technique: readChoice(config.technique, TECHNIQUES, 'config.technique'),
     level: readChoice(config.level, ['beginner', 'intermediate', 'advanced'], 'config.level'),
@@ -61,6 +100,12 @@ export function parseDrillConfig(value: unknown): DrillConfig {
     seed: readString(config.seed, 'config.seed'),
     ruleProfile: readReference(config.ruleProfile, 'config.ruleProfile'),
   };
+  const usesManualPattern = sameReference(parsed.pattern, MANUAL_PATTERN_REFERENCE);
+  requireCondition(usesManualPattern === (config.manualPattern !== undefined), 'config.manualPattern',
+    'manual-pattern@1.0.0 requires manualPattern data, and other patterns reject it.');
+  if (usesManualPattern) parsed = { ...parsed, manualPattern: parseManualPattern(config.manualPattern, parsed) };
+  requireCondition(!usesManualPattern || parsed.sustainTicks === 0, 'config.sustainTicks',
+    'Manual patterns define sustain duration per step.');
   requireCondition(sameReference(parsed.ruleProfile, FRETSENSE_V1_RULE_PROFILE), 'config.ruleProfile', 'Only fretsense-v1@1.0.0 is implemented.', 'unsupported');
   requireCondition(parsed.chordSize <= countFrets(parsed.allowedFrets), 'config.chordSize', 'Not enough allowed frets.');
   requireCondition(parsed.chordSize === 1 || parsed.articulation === 'strum' || parsed.articulation === 'mixed',
@@ -68,7 +113,9 @@ export function parseDrillConfig(value: unknown): DrillConfig {
   requireCondition(parsed.strumDirectionGoal.kind === 'none' || parsed.articulation === 'strum' || parsed.articulation === 'mixed',
     'config.strumDirectionGoal', 'Direction goals require strum notes.');
   requireCondition(!parsed.goals.requireStrumDirection || parsed.strumDirectionGoal.kind !== 'none', 'config.goals.requireStrumDirection', 'A direction goal is required.');
-  requireCondition(!parsed.goals.requireFullSustains || parsed.sustainTicks > 0, 'config.goals.requireFullSustains', 'A sustain duration is required.');
+  requireCondition(!parsed.goals.requireFullSustains || parsed.sustainTicks > 0
+    || parsed.manualPattern?.steps.some((step) => step.durationTicks > 0),
+    'config.goals.requireFullSustains', 'A sustain duration is required.');
   return immutableCopy(parsed);
 }
 

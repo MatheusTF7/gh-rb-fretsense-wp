@@ -21,6 +21,23 @@ export interface TrainingGoals {
   readonly requireFullSustains: boolean;
 }
 
+export interface ManualPatternStep {
+  readonly tick: MusicalTick;
+  readonly frets: NoteFrets;
+  readonly durationTicks: MusicalTick;
+  readonly articulation: Articulation;
+  /** Agrupa passos para análise e transições sem alterar o julgamento. */
+  readonly segmentId: string;
+}
+
+export interface ManualPattern {
+  readonly schemaVersion: 1;
+  readonly lengthTicks: MusicalTick;
+  readonly steps: readonly ManualPatternStep[];
+}
+
+export const MANUAL_PATTERN_REFERENCE = Object.freeze({ id: 'manual-pattern', version: '1.0.0' });
+
 export type StrumDirectionGoal =
   | { readonly kind: 'none' }
   | { readonly kind: 'fixed'; readonly direction: StrumDirection }
@@ -53,4 +70,6 @@ export interface DrillConfig {
   readonly goals: TrainingGoals;
   readonly seed: string;
   readonly ruleProfile: VersionedReference;
+  /** Presente somente quando `pattern` referencia `manual-pattern@1.0.0`. */
+  readonly manualPattern?: ManualPattern;
 }

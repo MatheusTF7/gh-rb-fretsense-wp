@@ -4,6 +4,8 @@ import { parseDrillConfig, getDrillGeometry } from '../domain/configuration';
 import { immutableCopy } from '../domain/immutable';
 import { countFrets, requireCondition } from '../domain/validation';
 import { createSeededRandom, hashSeed } from './random';
+import { generateCatalogDrill, isCatalogPattern } from './catalog-generator';
+import { generateManualDrill } from './manual-generator';
 
 export const INITIAL_GENERATOR = Object.freeze({ id: 'initial-generator', version: '1.0.0' });
 export const ASCENDING_DESCENDING_PATTERN = Object.freeze({ id: 'ascending-descending', version: '1.0.0' });
@@ -70,6 +72,8 @@ function createPattern(config: DrillConfig): readonly PatternStep[] {
 
 export function generateDrill(value: unknown): Chart {
   const config = parseDrillConfig(value);
+  if (config.manualPattern !== undefined) return generateManualDrill(config);
+  if (isCatalogPattern(config.pattern.id, config.pattern.version)) return generateCatalogDrill(config);
   const { stepTicks, lengthTicks, noteCount } = getDrillGeometry(config);
   const pattern = createPattern(config);
   // A identidade inclui a configuração canônica. O hash não é usado como prova de igualdade.
