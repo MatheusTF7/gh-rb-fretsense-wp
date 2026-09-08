@@ -1,6 +1,6 @@
 import { immutableCopy, requireCondition } from '@/engine/domain';
 import {
-  SESSION_DATABASE_SCHEMA_VERSION,
+  SESSION_DATABASE_VERSION,
   parseSessionSummary,
   parseStoredSessionRecord,
   summarizeSession,
@@ -12,11 +12,18 @@ import {
   type SessionSummary,
   type StoredSessionRecord,
 } from './contracts';
+import {
+  parseStoredAdaptationRecord,
+  type AdaptationRepository,
+  type StoredAdaptationRecord,
+} from './adaptation-contracts';
 
 const DATABASE_NAME = 'fretsense-sessions';
-const DATABASE_VERSION = SESSION_DATABASE_SCHEMA_VERSION;
+const DATABASE_VERSION = SESSION_DATABASE_VERSION;
 const RECORD_STORE = 'sessions';
 const SUMMARY_STORE = 'session-summaries';
+const ADAPTATION_STORE = 'recommendations';
+const SOURCE_SESSION_INDEX = 'source-session';
 
 type DatabaseFactory = Pick<IDBFactory, 'open'>;
 
@@ -43,8 +50,9 @@ function sameData(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export class IndexedDbSessionRepository implements SessionRepository {
+export class IndexedDbSessionRepository implements SessionRepository, AdaptationRepository {
   private readonly memory = new Map<string, StoredSessionRecord>();
+  private readonly adaptationMemory = new Map<string, StoredAdaptationRecord>();
   private readonly persistedIds = new Set<string>();
   private databasePromise: Promise<IDBDatabase> | null = null;
   private storageState: SessionStorageState = { mode: 'persistent', issue: null };
@@ -147,23 +155,105 @@ export class IndexedDbSessionRepository implements SessionRepository {
       total: filtered.length, incompatibleCount });
   }
 
+  async saveAdaptation(record: StoredAdaptationRecord): Promise<boolean> {
+    let accepted: StoredAdaptationRecord;
+    try { accepted = parseStoredAdaptationRecord(record); }
+    catch {
+      this.setMemory('write-failed');
+      return false;
+    }
+    const memoryRecord = this.adaptationMemory.get(accepted.id);
+    if (memoryRecord && memoryRecord.decision !== 'pending' && memoryRecord.decision !== 'adjusting'
+      && !sameData(memoryRecord, accepted)) {
+      if (accepted.decision === 'pending' && sameData(memoryRecord.recommendation, accepted.recommendation)) return true;
+      this.setMemory('id-conflict');
+      return false;
+    }
+    this.adaptationMemory.set(accepted.id, accepted);
+    try {
+      const database = await this.openDatabase();
+      const store = database.transaction(ADAPTATION_STORE, 'readonly').objectStore(ADAPTATION_STORE);
+      const rawExisting = await requestValue(store.get(accepted.id));
+      if (rawExisting !== undefined) {
+        const existing = parseStoredAdaptationRecord(rawExisting);
+        const isFinal = existing.decision !== 'pending' && existing.decision !== 'adjusting';
+        if (isFinal && !sameData(existing, accepted)) {
+          this.adaptationMemory.set(existing.id, existing);
+          if (accepted.decision === 'pending' && sameData(existing.recommendation, accepted.recommendation)) return true;
+          this.setMemory('id-conflict');
+          return false;
+        }
+      }
+      const transaction = database.transaction(ADAPTATION_STORE, 'readwrite');
+      transaction.objectStore(ADAPTATION_STORE).put(accepted);
+      await transactionDone(transaction);
+      return true;
+    } catch (error) {
+      this.setMemory(failureIssue(error, 'write-failed'));
+      return true;
+    }
+  }
+
+  async getAdaptation(id: string): Promise<StoredAdaptationRecord | null> {
+    const memoryRecord = this.adaptationMemory.get(id);
+    if (memoryRecord) return memoryRecord;
+    try {
+      const database = await this.openDatabase();
+      const value = await requestValue(database.transaction(ADAPTATION_STORE, 'readonly')
+        .objectStore(ADAPTATION_STORE).get(id));
+      if (value === undefined) return null;
+      const record = parseStoredAdaptationRecord(value);
+      this.adaptationMemory.set(record.id, record);
+      return record;
+    } catch {
+      this.storageState = { mode: this.storageState.mode, issue: 'incompatible-records' };
+      return null;
+    }
+  }
+
+  async getAdaptationForSession(sessionId: string): Promise<StoredAdaptationRecord | null> {
+    const memoryRecord = [...this.adaptationMemory.values()].find((item) => item.sourceSessionId === sessionId);
+    if (memoryRecord) return memoryRecord;
+    try {
+      const database = await this.openDatabase();
+      const store = database.transaction(ADAPTATION_STORE, 'readonly').objectStore(ADAPTATION_STORE);
+      const value = await requestValue(store.index(SOURCE_SESSION_INDEX).get(sessionId));
+      if (value === undefined) return null;
+      const record = parseStoredAdaptationRecord(value);
+      this.adaptationMemory.set(record.id, record);
+      return record;
+    } catch {
+      this.storageState = { mode: this.storageState.mode, issue: 'incompatible-records' };
+      return null;
+    }
+  }
+
   async remove(id: string): Promise<boolean> {
     requireCondition(id.trim().length > 0, 'session.id', 'Session ID is required.');
     const memoryRecord = this.memory.get(id);
     const existedInMemory = this.memory.delete(id);
+    const memoryAdaptation = [...this.adaptationMemory.values()].find((item) => item.sourceSessionId === id);
+    if (memoryAdaptation) this.adaptationMemory.delete(memoryAdaptation.id);
     if (!this.persistedIds.has(id) && this.storageState.mode === 'memory') return existedInMemory;
     try {
       const database = await this.openDatabase();
       const existing = await requestValue(database.transaction(RECORD_STORE, 'readonly').objectStore(RECORD_STORE).getKey(id));
       if (existing === undefined) return existedInMemory;
-      const transaction = database.transaction([RECORD_STORE, SUMMARY_STORE], 'readwrite');
+      const adaptationKey = await requestValue(database.transaction(ADAPTATION_STORE, 'readonly')
+        .objectStore(ADAPTATION_STORE).index(SOURCE_SESSION_INDEX).getKey(id));
+      const transaction = database.transaction([RECORD_STORE, SUMMARY_STORE, ADAPTATION_STORE], 'readwrite');
       transaction.objectStore(RECORD_STORE).delete(id);
       transaction.objectStore(SUMMARY_STORE).delete(id);
+      if (adaptationKey !== undefined) {
+        transaction.objectStore(ADAPTATION_STORE).delete(adaptationKey);
+        this.adaptationMemory.delete(String(adaptationKey));
+      }
       await transactionDone(transaction);
       this.persistedIds.delete(id);
       return true;
     } catch (error) {
       if (memoryRecord) this.memory.set(id, memoryRecord);
+      if (memoryAdaptation) this.adaptationMemory.set(memoryAdaptation.id, memoryAdaptation);
       this.setMemory(failureIssue(error, 'write-failed'));
       return false;
     }
@@ -178,6 +268,7 @@ export class IndexedDbSessionRepository implements SessionRepository {
         const state = await this.save(record);
         if (state.mode === 'memory') break;
       }
+      for (const record of this.adaptationMemory.values()) await this.saveAdaptation(record);
     } catch {
       this.setMemory(this.storageState.issue ?? 'unavailable');
     }
@@ -199,6 +290,10 @@ export class IndexedDbSessionRepository implements SessionRepository {
           const database = request.result;
           if (!database.objectStoreNames.contains(RECORD_STORE)) database.createObjectStore(RECORD_STORE, { keyPath: 'id' });
           if (!database.objectStoreNames.contains(SUMMARY_STORE)) database.createObjectStore(SUMMARY_STORE, { keyPath: 'id' });
+          if (!database.objectStoreNames.contains(ADAPTATION_STORE)) {
+            const store = database.createObjectStore(ADAPTATION_STORE, { keyPath: 'id' });
+            store.createIndex(SOURCE_SESSION_INDEX, 'sourceSessionId', { unique: true });
+          }
         } catch {
           migrationFailed = true;
           request.transaction?.abort();

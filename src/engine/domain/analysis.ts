@@ -172,11 +172,23 @@ export type RecommendationChange =
       readonly to: VersionedReference;
     };
 
+export type RecommendationReason =
+  | DiagnosticCode
+  | 'accuracy-below-goal'
+  | 'error-limit-exceeded'
+  | 'goals-consistently-met';
+
 export interface TrainingRecommendation {
   readonly schemaVersion: 1;
   readonly id: string;
   readonly policy: VersionedReference;
   readonly objective: 'timing' | 'accuracy' | 'articulation' | 'strum-direction' | 'sustain';
+  readonly reason: RecommendationReason;
+  readonly sampleCount: number;
+  readonly consistency: {
+    readonly observedAttempts: number;
+    readonly requiredAttempts: number;
+  };
   readonly diagnosticIds: readonly string[];
   readonly evidence: readonly EvidenceReference[];
   readonly change: RecommendationChange;

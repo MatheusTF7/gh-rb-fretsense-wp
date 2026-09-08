@@ -15,7 +15,10 @@ import {
 } from '@/engine/domain';
 import { createSessionSnapshot } from '@/engine/session';
 
+/** Versão dos registros de sessão; não muda quando um novo object store é adicionado. */
 export const SESSION_DATABASE_SCHEMA_VERSION = 1;
+/** Versão física do IndexedDB, atualmente com sessões, resumos e recomendações. */
+export const SESSION_DATABASE_VERSION = 2;
 export const SESSION_EXPORT_SCHEMA_VERSION = 1;
 export const SESSION_RAW_RETENTION = Object.freeze({
   maximumInputs: 2_048,

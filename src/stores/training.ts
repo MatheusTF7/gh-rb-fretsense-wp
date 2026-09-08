@@ -1,5 +1,5 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import type { DrillConfig, SessionMode, SessionResult, SessionSnapshot, TrainingRecommendation } from '@/engine/domain';
+import type { DrillConfig, SessionMode, SessionResult, SessionSnapshot } from '@/engine/domain';
 import { immutableCopy, parseDrillConfig, requireCondition } from '@/engine/domain';
 
 export interface InMemorySessionRecord {
@@ -22,7 +22,6 @@ export const useTrainingStore = defineStore('training', {
     draftFocusSegment: null as string | null,
     draftContext: null as TrainingDraftContext | null,
     latestRecord: null as InMemorySessionRecord | null,
-    recommendation: null as TrainingRecommendation | null,
   }),
   actions: {
     saveDraft(value: unknown, presetId: string, focusSegment: string | null, context: TrainingDraftContext) {
@@ -37,17 +36,6 @@ export const useTrainingStore = defineStore('training', {
     },
     discardResult(id: string) {
       if (this.latestRecord?.snapshot.id === id) this.latestRecord = null;
-    },
-    setRecommendation(value: TrainingRecommendation | null) {
-      this.recommendation = value === null ? null : immutableCopy(value);
-    },
-    applyRecommendation(): DrillConfig | null {
-      const recommendation = this.recommendation;
-      if (!recommendation) return null;
-      const config = parseDrillConfig(recommendation.resultingConfig);
-      this.draftConfig = config;
-      this.recommendation = null;
-      return config;
     },
   },
 });

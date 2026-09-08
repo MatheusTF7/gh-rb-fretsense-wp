@@ -4,7 +4,7 @@
 
 ## Fluxo disponível
 
-A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado. Ao terminar, a tentativa é encaminhada ao repositório local descrito em [persistência e histórico](./session-persistence.md), sem incluir armazenamento no caminho de julgamento. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de strum, modo de áudio e calibração. O strum automático vem selecionado por padrão para teclado e Gamepad. Estão disponíveis:
+A rota `/play` conecta configuração, `TrainingSession`, entrada, áudio, julgamento, highway e resultado. Ao terminar, a tentativa é encaminhada ao repositório local descrito em [persistência e histórico](./session-persistence.md), sem incluir armazenamento no caminho de julgamento. Depois da gravação, o fluxo de [treino corretivo e progressão](./adaptive-training.md) avalia somente condições comparáveis e pode preparar a configuração da tentativa seguinte. O usuário escolhe um perfil salvo, a conexão correspondente quando usa Gamepad, BPM, repetições, modo de strum, modo de áudio e calibração. O strum automático vem selecionado por padrão para teclado e Gamepad. Estão disponíveis:
 
 - subida/descida de cinco frets por strum ou tap;
 - subida/descida por HOPO, com início e recuperação por strum;

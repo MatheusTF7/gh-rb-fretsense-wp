@@ -84,6 +84,19 @@
                 </div>
               </div>
             </fieldset>
+
+            <fieldset class="practice-fieldset">
+              <legend>{{ t('play.adaptation.modeTitle') }}</legend>
+              <div class="practice-fields">
+                <div class="practice-option">
+                  <q-toggle v-model="adaptiveEnabled" color="primary"
+                    :label="t('play.adaptation.modeEnabled')" :disable="starting" />
+                  <p class="muted-text">{{ t('play.adaptation.modeHelp') }}</p>
+                </div>
+                <q-input v-model.number="adaptiveMaximumBlocks" type="number" min="1" max="12" step="1"
+                  :label="t('play.adaptation.maximumBlocks')" :disable="starting || !adaptiveEnabled" />
+              </div>
+            </fieldset>
           </q-expansion-item>
 
           <div class="practice-fields">
@@ -173,6 +186,8 @@
           tone="error" :message="t('play.assessmentIneligible')" />
         <FeedbackBanner v-if="history.storageState.mode === 'memory'" class="q-mt-md" tone="error"
           :message="t(`history.storage.${history.storageState.issue ?? 'memory'}`)" />
+        <FeedbackBanner v-else-if="adaptation.storageState.mode === 'memory'" class="q-mt-md" tone="error"
+          :message="t(`history.storage.${adaptation.storageState.issue ?? 'memory'}`)" />
         <div class="result-metrics">
           <div><span>{{ t('play.accuracy') }}</span><strong>{{ ratioLabel(result.metrics.noteAccuracy) }}</strong></div>
           <div><span>{{ t('play.hits') }}</span><strong>{{ result.metrics.hitNotes }}/{{ result.metrics.plannedNotes }}</strong></div>
@@ -186,12 +201,18 @@
           <div><span>{{ t('play.duration') }}</span><strong>{{ durationLabel }}</strong></div>
         </div>
         <p v-if="result.interruptions.length" class="muted-text">{{ t('play.interruptions', { count: result.interruptions.length }) }}</p>
+        <TrainingRecommendationCard v-if="adaptation.record && adaptation.record.sourceSessionId === result.sessionId"
+          :record="adaptation.record" actionable :adaptive-limit-reached="adaptation.adaptiveLimitReached"
+          @accept="applyRecommendation" @adjust="adjustRecommendation" @ignore="ignoreRecommendation" />
+        <FeedbackBanner v-else-if="adaptation.loading" tone="info" :message="t('play.adaptation.evaluating')" />
+        <FeedbackBanner v-else-if="adaptation.evaluationReason" tone="info"
+          :message="t(`play.adaptation.unavailable.${adaptation.evaluationReason}`, {
+            observed: adaptation.observedAttempts, required: adaptation.requiredAttempts,
+          })" />
         <div class="practice-actions">
           <q-btn unelevated color="primary" no-caps icon="replay" :loading="starting" :label="t('play.repeatSame')" @click="repeat" />
           <q-btn outline no-caps icon="casino" :loading="starting" :disable="snapshot.config.manualPattern !== undefined"
             :label="t('play.generateVariation')" @click="vary" />
-          <q-btn outline no-caps icon="auto_fix_high" :disable="!workspace.recommendation"
-            :label="t(workspace.recommendation ? 'play.applyRecommendation' : 'play.recommendationUnavailable')" @click="applyRecommendation" />
           <q-btn flat no-caps icon="receipt_long" :to="{ name: 'results', params: { id: result.sessionId } }" :label="t('play.viewResult')" />
           <q-btn flat no-caps icon="tune" :label="t('play.changeSetup')" @click="reset" />
         </div>
@@ -214,12 +235,13 @@ import FeedbackBanner from '@/components/FeedbackBanner.vue';
 import ChartPreview from '@/components/training/ChartPreview.vue';
 import FretLegend from '@/components/training/FretLegend.vue';
 import TrainingHighway from '@/components/training/TrainingHighway.vue';
+import TrainingRecommendationCard from '@/components/reports/TrainingRecommendationCard.vue';
 
 const { t } = useI18n();
 const router = useRouter();
 const training = useTrainingSession();
 const {
-  workspace, history, captureArea, profileId, profile, connectionId, matchingConnections, selectedPreset,
+  history, adaptation, captureArea, profileId, profile, connectionId, matchingConnections, selectedPreset,
   technique, level, descriptor, mode, bpm, subdivision, allowedFrets, lengthKind, lengthValue,
   automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts, requireArticulation,
   requireStrumDirection, requireFullSustains, focusSegment, segmentOptions, audioMode, calibrationId,
@@ -227,8 +249,17 @@ const {
   judgments, latestJudgment, result, preview, requirements, compatibility, state, isActive, isPaused,
   directionGoalAvailable, sustainGoalAvailable, isFinished, countdownBeat, resolvedNotes, progress,
   refreshDevices, startAttempt, pause, resume,
-  restart, repeat, vary, applyRecommendation, leave, reset,
+  restart, repeat, vary, applyRecommendation, adjustRecommendation, ignoreRecommendation, leave, reset,
 } = training;
+
+const adaptiveEnabled = computed({
+  get: () => adaptation.adaptiveEnabled,
+  set: (value: boolean) => adaptation.configureAdaptive(value, adaptation.adaptiveMaximumBlocks),
+});
+const adaptiveMaximumBlocks = computed({
+  get: () => adaptation.adaptiveMaximumBlocks,
+  set: (value: number | string | null) => adaptation.configureAdaptive(adaptation.adaptiveEnabled, Number(value ?? 1)),
+});
 
 const techniqueOptions = computed(() => TECHNIQUE_DESCRIPTORS.map(({ id }) => ({ value: id, label: t(`techniques.${id}.title`) })));
 const levelOptions = computed(() => ['beginner', 'intermediate', 'advanced'].map((value) => ({ value, label: t(`catalog.levels.${value}`) })));

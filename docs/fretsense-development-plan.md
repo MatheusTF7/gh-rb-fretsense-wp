@@ -548,20 +548,32 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Criar regras que relacionem padrões de erro a exercícios: transição problemática, inversão, acorde incompleto, strum irregular ou sustain interrompido.
-- [ ] Definir quantidade mínima de amostras, limite de erros, precisão desejada e repetições consistentes como parâmetros de progressão.
-- [ ] Excluir tentativas abandonadas ou avaliações interrompidas de promoções automáticas; manter seus resultados identificados no histórico.
-- [ ] Não promover competência de alternate strum quando a direção não foi observada.
-- [ ] Propor redução/aumento limitado de BPM, simplificação do padrão ou foco em uma transição, respeitando os limites do catálogo.
-- [ ] Alterar preferencialmente uma dimensão de dificuldade por recomendação para manter a evolução interpretável.
-- [ ] Implementar estabilidade na progressão: não alternar nível para cima/baixo por uma única tentativa fora do padrão.
-- [ ] Apresentar a evidência e o efeito da recomendação antes de iniciar o próximo exercício.
-- [ ] Permitir aceitar, ignorar ou ajustar a sugestão; o modo adaptativo pode encadear blocos dentro de limites previamente escolhidos.
-- [ ] Registrar recomendação, decisão do usuário e configuração resultante, sem modificar a sessão que originou a sugestão.
+- [x] Criar regras que relacionem padrões de erro a exercícios: transição problemática, inversão, acorde incompleto, strum irregular ou sustain interrompido.
+- [x] Definir quantidade mínima de amostras, limite de erros, precisão desejada e repetições consistentes como parâmetros de progressão.
+- [x] Excluir tentativas abandonadas ou avaliações interrompidas de promoções automáticas; manter seus resultados identificados no histórico.
+- [x] Não promover competência de alternate strum quando a direção não foi observada.
+- [x] Propor redução/aumento limitado de BPM, simplificação do padrão ou foco em uma transição, respeitando os limites do catálogo.
+- [x] Alterar preferencialmente uma dimensão de dificuldade por recomendação para manter a evolução interpretável.
+- [x] Implementar estabilidade na progressão: não alternar nível para cima/baixo por uma única tentativa fora do padrão.
+- [x] Apresentar a evidência e o efeito da recomendação antes de iniciar o próximo exercício.
+- [x] Permitir aceitar, ignorar ou ajustar a sugestão; o modo adaptativo pode encadear blocos dentro de limites previamente escolhidos.
+- [x] Registrar recomendação, decisão do usuário e configuração resultante, sem modificar a sessão que originou a sugestão.
 
 **Entregáveis:** motor de adaptação por regras e fluxo de exercício corretivo.
 
 **Critério de conclusão:** toda mudança proposta tem uma causa rastreável e só passa a valer na próxima tentativa; a progressão depende de condições comparáveis.
+
+**Registro da etapa — 2026-09-08:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** motor de adaptação determinístico e versionado; limiares explícitos de amostra, erro, precisão e consistência; comparação estrita de condições; correções por BPM, foco de transição ou nível; proteção de alternate strum sem direção; fluxo de aceitar, ignorar e ajustar; cadeias adaptativas limitadas; persistência da recomendação, decisão e configuração resultante em registro separado.
+- **Arquivos:** `src/engine/adaptation`, `src/stores/adaptation.ts`, `src/components/reports/TrainingRecommendationCard.vue`, integração em `useTrainingSession`, telas de treino/resultado, object store `recommendations` e [treino corretivo e progressão](./adaptive-training.md).
+- **Decisões relevantes:** promoção exige no mínimo três tentativas comparáveis, mesmo que a meta configurada seja menor; regressão de nível exige duas falhas comparáveis no BPM mínimo; mudanças de BPM são limitadas a −10/+5 e aos limites da técnica; abandono, interrupção ou dados exigidos ausentes preservam o resultado, mas não promovem.
+- **Persistência:** a versão física do IndexedDB passa a 2 apenas para adicionar recomendações; os registros de sessão continuam no schema 1 e não são reescritos. Ajustes são finalizados com a configuração realmente usada na tentativa seguinte.
+- **Revisão realizada:** somente análise estática manual de contratos, tipos, imports, regras, estados, migração e interface; nenhum teste, lint, formatação automática, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** comportamento em execução, migração real do IndexedDB, ergonomia dos limiares e aparência responsiva dependem de confirmação pelo desenvolvedor. A etapa 14 ampliará visualizações históricas e ações a partir de relatórios antigos.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 14, relatórios e acompanhamento.
 
 ### Etapa 14 — Completar relatórios e acompanhamento
 

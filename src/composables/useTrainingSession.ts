@@ -19,6 +19,7 @@ import {
 } from '@/platform/input';
 import { SessionClock } from '@/platform/timing/session-clock';
 import { useCalibrationStore } from '@/stores/calibration';
+import { useAdaptationStore } from '@/stores/adaptation';
 import { useHistoryStore } from '@/stores/history';
 import { useInterfaceStore } from '@/stores/interface';
 import { useTrainingStore } from '@/stores/training';
@@ -102,11 +103,13 @@ export function useTrainingSession() {
   const route = useRoute();
   const ui = useInterfaceStore();
   const calibrations = useCalibrationStore();
+  const adaptation = useAdaptationStore();
   const history = useHistoryStore();
   const workspace = useTrainingStore();
   const captureArea = ref<HTMLElement | null>(null);
   const profileId = ref(ui.selectedProfileId);
   const presetId = ref<string | null>(null);
+  const configTemplate = shallowRef<DrillConfig | null>(null);
   const mode = ref<SessionMode>('practice');
   const bpm = ref<number | string | null>(80);
   const seed = ref('fretsense');
@@ -186,8 +189,10 @@ export function useTrainingSession() {
   }
 
   function loadConfig(config: DrillConfig): void {
-    const preset = getDrillPreset(config.pattern.id);
+    const preset = getDrillPreset(config.pattern.id)
+      ?? DRILL_PRESETS.find((item) => item.technique === config.technique && item.level === config.level);
     if (preset) presetId.value = preset.id;
+    configTemplate.value = config;
     bpm.value = config.bpm;
     seed.value = config.seed;
     subdivision.value = config.subdivision;
@@ -228,8 +233,9 @@ export function useTrainingSession() {
     requireCondition(policy.subdivisions.includes(subdivision.value),
       'config.subdivision', 'Subdivision is outside this technique range.');
     const numericLength = requiredNumber(lengthValue.value, 'config.length');
+    const template = configTemplate.value ?? preset.config;
     return parseDrillConfig({
-      ...preset.config,
+      ...template,
       bpm: numericBpm,
       seed: seed.value,
       subdivision: subdivision.value,
@@ -390,6 +396,7 @@ export function useTrainingSession() {
     if (currentResult && currentSnapshot && workspace.latestRecord?.result.sessionId !== currentResult.sessionId) {
       workspace.saveResult(currentSnapshot, currentResult);
       void history.persist(currentSnapshot, currentResult, session.getInputs(), session.getJudgments());
+      void adaptation.evaluate(currentSnapshot, currentResult);
     }
     if (view.value.state === 'paused' || view.value.state === 'completed' || view.value.state === 'aborted') {
       stopFrame();
@@ -495,6 +502,8 @@ export function useTrainingSession() {
       if (profile.value.kind === 'gamepad' && !selectedConnection.value) throw new Error('device-unavailable');
       const config = preview.value.ok ? preview.value.config : buildConfig();
       saveDraft(config);
+      adaptation.beginAttempt();
+      void adaptation.finalizeAdjustment(config);
       const calibration = resolveCalibration(nextAudio);
       next.prepare({ mode: mode.value, config, device: profile.value, calibration });
       next.enableInitialJudgment();
@@ -552,6 +561,7 @@ export function useTrainingSession() {
         throw new Error('calibration-mismatch');
       }
       refreshDevices();
+      adaptation.beginAttempt();
       activatePrepared(next, nextAudio);
     } catch (error) {
       if (next && !['idle', 'completed', 'aborted'].includes(next.getView().state)) next.abort('unrecoverable-error');
@@ -621,11 +631,23 @@ export function useTrainingSession() {
   }
 
   async function applyRecommendation() {
-    const config = workspace.applyRecommendation();
+    const config = await adaptation.accept();
     if (!config) return;
     await reset();
     loadConfig(config);
     saveDraft(config);
+  }
+
+  async function adjustRecommendation() {
+    const config = await adaptation.adjust();
+    if (!config) return;
+    await reset();
+    loadConfig(config);
+    saveDraft(config);
+  }
+
+  async function ignoreRecommendation() {
+    await adaptation.ignore();
   }
 
   watch(profileId, (id) => {
@@ -688,7 +710,7 @@ export function useTrainingSession() {
   });
 
   return {
-    ui, workspace, history, captureArea, profileId, profile, connectionId, matchingConnections,
+    ui, workspace, history, adaptation, captureArea, profileId, profile, connectionId, matchingConnections,
     presetId, selectedPreset, technique, level, descriptor, mode, bpm, seed, subdivision, allowedFrets,
     lengthKind, lengthValue, automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts,
     requireArticulation, requireStrumDirection, requireFullSustains, focusSegment, segmentOptions,
@@ -698,6 +720,6 @@ export function useTrainingSession() {
     state, isActive, isPaused, isFinished, countdownBeat,
     resolvedNotes, progress, selectPreset, refreshDevices, startAttempt, pause, resume,
     restart: () => launchNext('restart'), repeat: () => launchNext('repeat'), vary: () => launchNext('vary'),
-    applyRecommendation, leave, reset,
+    applyRecommendation, adjustRecommendation, ignoreRecommendation, leave, reset,
   };
 }

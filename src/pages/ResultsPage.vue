@@ -15,6 +15,8 @@
         :message="t(record.snapshot.mode === 'assessment' ? 'play.assessmentIneligible' : 'results.ineligible')" />
       <FeedbackBanner v-if="history.storageState.mode === 'memory'" tone="error"
         :message="t(`history.storage.${history.storageState.issue ?? 'memory'}`)" />
+      <FeedbackBanner v-else-if="adaptation.storageState.mode === 'memory'" tone="error"
+        :message="t(`history.storage.${adaptation.storageState.issue ?? 'memory'}`)" />
       <FeedbackBanner v-if="removalFailed" tone="error" :message="t('results.removeFailed')" />
 
       <section class="surface-card result-detail" aria-labelledby="result-detail-title">
@@ -51,6 +53,8 @@
         <ChartPreview :chart="record.snapshot.chart" />
         <SessionAnalysisReport v-if="record.result.analysis" :report="record.result.analysis" />
         <FeedbackBanner v-else tone="error" :message="t('results.analysis.notPerformed')" />
+        <TrainingRecommendationCard v-if="adaptation.record && adaptation.record.sourceSessionId === record.snapshot.id"
+          :record="adaptation.record" />
 
         <section class="result-recording" aria-labelledby="result-recording-title">
           <div>
@@ -100,6 +104,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import type { RatioMetric } from '@/engine/domain';
 import { useHistoryStore } from '@/stores/history';
+import { useAdaptationStore } from '@/stores/adaptation';
 import { useTrainingStore } from '@/stores/training';
 import PageFrame from '@/components/PageFrame.vue';
 import PageHeading from '@/components/PageHeading.vue';
@@ -107,12 +112,14 @@ import PageState from '@/components/PageState.vue';
 import FeedbackBanner from '@/components/FeedbackBanner.vue';
 import ChartPreview from '@/components/training/ChartPreview.vue';
 import SessionAnalysisReport from '@/components/reports/SessionAnalysisReport.vue';
+import TrainingRecommendationCard from '@/components/reports/TrainingRecommendationCard.vue';
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const workspace = useTrainingStore();
 const history = useHistoryStore();
+const adaptation = useAdaptationStore();
 const removeDialog = ref(false);
 const removing = ref(false);
 const removalFailed = ref(false);
@@ -137,7 +144,10 @@ function ratioLabel(metric: RatioMetric): string {
 }
 
 function loadRecord(): void {
-  if (routeId.value) void history.openSession(routeId.value);
+  if (routeId.value) {
+    void history.openSession(routeId.value);
+    void adaptation.loadForSession(routeId.value);
+  }
 }
 
 function exportJson(): void {
