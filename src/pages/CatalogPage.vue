@@ -39,8 +39,12 @@
         <p class="technique-objective"><strong>{{ t('catalog.objective') }}</strong> {{ t(technique.objectiveKey) }}</p>
         <ul class="preset-list">
           <li v-for="preset in technique.presets" :key="preset.id">
-            <span>{{ t(`catalog.levels.${preset.level}`) }}</span>
-            <small>{{ preset.config.bpm }} BPM · {{ t('catalog.subdivision', { value: preset.config.subdivision }) }}</small>
+            <div>
+              <span>{{ t(`catalog.levels.${preset.level}`) }}</span>
+              <small>{{ preset.config.bpm }} BPM · {{ t('catalog.subdivision', { value: preset.config.subdivision }) }}</small>
+            </div>
+            <q-btn flat dense no-caps icon-right="arrow_forward" :to="{ name: 'play', query: { preset: preset.id } }"
+              :label="t('catalog.configure')" />
           </li>
         </ul>
         <p class="technique-focus">{{ t(`techniques.${technique.id}.focus`) }}</p>

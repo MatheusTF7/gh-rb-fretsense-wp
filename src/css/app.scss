@@ -205,8 +205,9 @@ input:focus-visible,
 .technique-card .technique-focus { margin: auto 0 0; padding-top: 16px; border-top: 1px solid var(--fs-border); color: var(--fs-accent); font-size: 0.8rem; font-weight: 500; }
 .technique-objective { padding: 12px; border-radius: 8px; background: var(--fs-raised); }
 .preset-list { display: grid; gap: 8px; margin: 0 0 20px; padding: 0; list-style: none; }
-.preset-list > li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.preset-list small { color: var(--fs-muted); text-align: right; }
+.preset-list > li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.preset-list > li > div { display: grid; }
+.preset-list small { color: var(--fs-muted); }
 .manual-pattern-editor { display: grid; gap: 24px; }
 .manual-pattern-editor h2 { margin-top: 0; }
 .manual-pattern-editor p { margin-bottom: 0; }

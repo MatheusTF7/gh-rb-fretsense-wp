@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–09 revisadas estaticamente, sem confirmação em execução. Etapas 10–20 pendentes.
+**Status:** etapas 01–10 revisadas estaticamente, sem confirmação em execução. Etapas 11–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -445,19 +445,30 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Construir a seleção de técnica e nível com configurações avançadas para BPM, frets, subdivisão, duração, regras e metas.
-- [ ] Mostrar resumo do exercício e requisitos de entrada antes de iniciar, com prévia das notas planejadas.
-- [ ] Oferecer prática em blocos repetidos e foco em trecho; mudanças de configuração produzem uma nova tentativa identificável.
-- [ ] Oferecer avaliação com snapshot congelado, duração/repetições definidas e resultado ao final.
-- [ ] Marcar pausa/interrupção em avaliação como condição que impede progressão automática; permitir reiniciar uma avaliação completa.
-- [ ] Diferenciar repetir a mesma chart, gerar uma variação e aplicar uma recomendação.
-- [ ] Preservar a configuração ao consultar resultados e voltar ao treino.
-- [ ] Impedir mudanças de dispositivo, regras ou calibração no meio de uma tentativa sem encerrá-la ou invalidar sua comparabilidade.
-- [ ] Tratar navegação direta para `/play` sem configuração e para resultados inexistentes com estados recuperáveis.
+- [x] Construir a seleção de técnica e nível com configurações avançadas para BPM, frets, subdivisão, duração, regras e metas.
+- [x] Mostrar resumo do exercício e requisitos de entrada antes de iniciar, com prévia das notas planejadas.
+- [x] Oferecer prática em blocos repetidos e foco em trecho; mudanças de configuração produzem uma nova tentativa identificável.
+- [x] Oferecer avaliação com snapshot congelado, duração/repetições definidas e resultado ao final.
+- [x] Marcar pausa/interrupção em avaliação como condição que impede progressão automática; permitir reiniciar uma avaliação completa.
+- [x] Diferenciar repetir a mesma chart, gerar uma variação e aplicar uma recomendação.
+- [x] Preservar a configuração ao consultar resultados e voltar ao treino.
+- [x] Impedir mudanças de dispositivo, regras ou calibração no meio de uma tentativa sem encerrá-la ou invalidar sua comparabilidade.
+- [x] Tratar navegação direta para `/play` sem configuração e para resultados inexistentes com estados recuperáveis.
 
 **Entregáveis:** catálogo navegável, configurador completo e fluxos de prática/avaliação.
 
 **Critério de conclusão:** o usuário entende o objetivo, as condições e o resultado de cada tentativa; ajustes não modificam silenciosamente o histórico da tentativa anterior.
+
+**Registro da etapa — 2026-09-08:**
+
+- **Configuração e prévia:** a área de treino recebe presets pela rota do catálogo e permite modo, técnica, nível, BPM, subdivisão, frets, blocos/duração, foco em trecho, regras fixadas e metas. A chart é materializada antes do início, com prévia textual e requisitos de entrada.
+- **Compatibilidade:** strum, direção observável e simultaneidade são comparados ao perfil selecionado; incompatibilidades conhecidas bloqueiam a tentativa e capacidade de acordes desconhecida é indicada sem inventar confirmação.
+- **Prática e avaliação:** ambas congelam o `SessionSnapshot`. Avaliações interrompidas permanecem consultáveis, mas inelegíveis para progressão; reinício cria uma tentativa completa com novo ID. Configuração, dispositivo e calibração ficam inacessíveis durante execução.
+- **Continuidade:** o workspace Pinia em memória conserva draft, contexto e último resultado. `/play` sem preset e `/results/:id` sem registro exibem estados recuperáveis. A rota de resultado mostra condições congeladas e permite voltar à configuração preservada.
+- **Próximas ações:** repetir usa a mesma chart, variar troca a seed e recomendação carrega uma `resultingConfig` quando fornecida. A geração automática de recomendações continua pertencendo à etapa 13.
+- **Validação:** revisão exclusivamente estática e manual de imports, tipos, invariantes, transições de sessão e coerência das traduções. Nenhum lint, teste, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** o workspace mantém somente o resultado mais recente durante a visita. Persistência, histórico e múltiplos registros pertencem à etapa 12; diagnóstico detalhado pertence à etapa 11.
+- **Próxima etapa liberada:** etapa 11, análise e diagnóstico de erros.
 
 ### Etapa 11 — Implementar análise e diagnóstico de erros
 
