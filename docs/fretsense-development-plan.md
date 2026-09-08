@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–14 revisadas estaticamente, sem confirmação em execução. Etapas 15A–20 pendentes.
+**Status:** etapas 01–15A revisadas estaticamente, sem confirmação em execução. Etapas 15B–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -268,7 +268,7 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 - **Arquivos relevantes:** `src/platform/input`, `src/platform/preferences/repository.ts`, `src/pages/DevicesPage.vue`, `src/components/devices`, `src/components/StorageNotice.vue`, store/interface, aplicação e mensagens `pt-BR`/`en-US`. Uso e fronteiras documentados em [entrada e preferências](./input-and-preferences.md).
 - **Decisões relevantes:** teclado inicial A/S/D/F/G, setas cima/baixo e Escape; Gamepad sem índices universais presumidos, com aprendizado de botões/eixos e limiares iniciais 0,6/0,3. Captura só em área focada, com Tab livre, pausa prioritária, retorno ao neutro e reinício explícito após interrupções. Todos os eventos usam timestamp de observação nesta etapa.
 - **Capacidades:** confirma somente acordes e controles extras realmente recebidos; não deduz máximo de teclas, alternância bem-sucedida, mão ou dedo. Mudanças de mapeamento limpam evidências anteriores; salvar cria nova versão e invalida referências de calibração do perfil editado.
-- **Persistência:** chave `fretsense.preferences.v1`, esquema 1, até 16 perfis e 262.144 unidades de texto. Guarda idioma, tema, redução de efeitos e perfil selecionado; conexão física e busca são transitórias. Falhas mantêm alterações em memória; dados inválidos/incompatíveis são preservados sem sobrescrita automática.
+- **Persistência:** chave `fretsense.preferences.v1`, migrada pela etapa 15A ao esquema 2, até 16 perfis e 262.144 unidades de texto. Guarda idioma, tema, movimento, preferências da highway e perfil selecionado; conexão física e busca são transitórias. Falhas mantêm alterações em memória; dados inválidos/incompatíveis são preservados sem sobrescrita automática.
 - **Integração preparada:** `createSessionInput` encaminha eventos, baseline e interrupções à sessão, preservando sequência ao retomar/substituir adaptadores. Exige o relógio ativo da etapa 05 e um coordenador proprietário do descarte; ainda não é acionado pela área jogável.
 - **Revisão realizada:** somente análise estática manual de tipos, imports, transições, limites, callbacks, descarte, componentes, mensagens e tratamento de armazenamento. Consulta às especificações primárias de Gamepad/UI Events; não foram criados ou executados testes, nem executados lint, formatação automática, build, typecheck, aplicação ou verificações no navegador.
 - **Limitações e pendências:** hardware, visual e comportamento ainda não confirmados em execução; sem WebHID, calibração, áudio ou treino jogável. Limiares são preservados por perfil e recebem os padrões ao remapear. Não há sincronização de preferências entre abas ou migração de esquemas desconhecidos.
@@ -613,22 +613,34 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Manter Vue/Quasar e DOM para HUD, configuração, pausa, mensagens e controles acessíveis; reservar Canvas para a highway e efeitos de gameplay que realmente se beneficiam do desenho por frame.
-- [ ] Extrair um contrato de backend de renderização com ciclo explícito de preparação, redimensionamento, desenho e descarte. Manter Canvas 2D como backend inicial e impedir dependência do motor de julgamento em Canvas, PixiJS ou outra biblioteca visual.
-- [ ] Criar `HighwayPresentationProfile` versionado para projeção plana/perspectiva, espaçamento e profundidade das pistas, posição da linha de acerto, velocidade visual, formas de notas, caudas, marcadores de tempo, feedback e tokens visuais do HUD.
-- [ ] Redesenhar a highway com perspectiva e profundidade coerentes, grade rítmica/linhas de compasso, separação clara das cinco pistas, linha de acerto dominante e escala de notas que preserve leitura em diferentes dimensões.
-- [ ] Diferenciar strum, HOPO, tap, acordes, sustains, direções e estados resolvidos por forma, contorno, símbolo e movimento, nunca apenas por cor; evitar que caudas ou efeitos ocultem notas seguintes.
-- [ ] Acrescentar feedback visual limitado para acerto, antecipação, atraso, miss, strum extra, quebra/conclusão de sustain e ativação dos frets, com prioridade visual definida e alternativa com movimento reduzido.
-- [ ] Reorganizar a tela de jogo para dar protagonismo à highway: HUD compacto para combo, progresso, BPM e estado; controles secundários recolhíveis; contagem e pausa como camadas claras; modo de foco/tela cheia quando suportado, sempre com saída visível.
-- [ ] Adaptar a composição para desktop, telas estreitas e diferentes proporções sem comprimir pistas, cobrir a linha de acerto ou reposicionar controles essenciais durante uma tentativa.
-- [ ] Permitir ajustar velocidade visual separadamente do BPM, escala/contraste da highway e intensidade de efeitos. Mudanças puramente visuais não alteram ticks, janelas, julgamento, calibração ou comparabilidade musical.
-- [ ] Cachear estilos, textos e primitivas repetidas; considerar camadas/offscreen canvas para fundo e grade; reutilizar objetos de efeitos; manter busca/culling das notas visíveis e evitar leituras de layout ou alocações desnecessárias por frame.
-- [ ] Manter o renderer Canvas enquanto atender aos cenários confirmados. Avaliar PixiJS ou backend GPU somente diante de requisito concreto de sprites, filtros, partículas, meshes/shaders ou evidência do desenvolvedor de que o Canvas otimizado não atende ao frame budget nos dispositivos-alvo.
-- [ ] Definir roteiro de avaliação visual pelo desenvolvedor com capturas em resoluções-alvo, charts densas, sustains/acordes, temas, redução de movimento e sessões prolongadas; registrar achados sem o agente afirmar desempenho medido.
+- [x] Manter Vue/Quasar e DOM para HUD, configuração, pausa, mensagens e controles acessíveis; reservar Canvas para a highway e efeitos de gameplay que realmente se beneficiam do desenho por frame.
+- [x] Extrair um contrato de backend de renderização com ciclo explícito de preparação, redimensionamento, desenho e descarte. Manter Canvas 2D como backend inicial e impedir dependência do motor de julgamento em Canvas, PixiJS ou outra biblioteca visual.
+- [x] Criar `HighwayPresentationProfile` versionado para projeção plana/perspectiva, espaçamento e profundidade das pistas, posição da linha de acerto, velocidade visual, formas de notas, caudas, marcadores de tempo, feedback e tokens visuais do HUD.
+- [x] Redesenhar a highway com perspectiva e profundidade coerentes, grade rítmica/linhas de compasso, separação clara das cinco pistas, linha de acerto dominante e escala de notas que preserve leitura em diferentes dimensões.
+- [x] Diferenciar strum, HOPO, tap, acordes, sustains, direções e estados resolvidos por forma, contorno, símbolo e movimento, nunca apenas por cor; evitar que caudas ou efeitos ocultem notas seguintes.
+- [x] Acrescentar feedback visual limitado para acerto, antecipação, atraso, miss, strum extra, quebra/conclusão de sustain e ativação dos frets, com prioridade visual definida e alternativa com movimento reduzido.
+- [x] Reorganizar a tela de jogo para dar protagonismo à highway: HUD compacto para combo, progresso, BPM e estado; controles secundários recolhíveis; contagem e pausa como camadas claras; modo de foco/tela cheia quando suportado, sempre com saída visível.
+- [x] Adaptar a composição para desktop, telas estreitas e diferentes proporções sem comprimir pistas, cobrir a linha de acerto ou reposicionar controles essenciais durante uma tentativa.
+- [x] Permitir ajustar velocidade visual separadamente do BPM, escala/contraste da highway e intensidade de efeitos. Mudanças puramente visuais não alteram ticks, janelas, julgamento, calibração ou comparabilidade musical.
+- [x] Cachear estilos, textos e primitivas repetidas; considerar camadas/offscreen canvas para fundo e grade; reutilizar objetos de efeitos; manter busca/culling das notas visíveis e evitar leituras de layout ou alocações desnecessárias por frame.
+- [x] Manter o renderer Canvas enquanto atender aos cenários confirmados. Avaliar PixiJS ou backend GPU somente diante de requisito concreto de sprites, filtros, partículas, meshes/shaders ou evidência do desenvolvedor de que o Canvas otimizado não atende ao frame budget nos dispositivos-alvo.
+- [x] Definir roteiro de avaliação visual pelo desenvolvedor com capturas em resoluções-alvo, charts densas, sustains/acordes, temas, redução de movimento e sessões prolongadas; registrar achados sem o agente afirmar desempenho medido.
 
 **Entregáveis:** contrato e perfil versionado de apresentação, highway e tela de jogo refinadas, preferências visuais e roteiro de avaliação. O detalhamento está em [plano de highway e tela de jogo](./highway-and-game-ui-plan.md).
 
 **Critério de conclusão:** a highway mantém leitura de notas, timing e estado em todas as dimensões previstas; configurações visuais não mudam o julgamento; o HUD permanece navegável e recuperável. Qualidade visual e desempenho em execução dependem de confirmação do desenvolvedor.
+
+**Registro da etapa — 2026-09-08:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** contrato de backend com ciclo explícito, perfil/snapshot versionado de apresentação, backend Canvas 2D em perspectiva, grade musical, vocabulário redundante de notas/acordes/sustains, feedback visual limitado, HUD responsivo, modo de foco, tela cheia e preferências visuais com prévia. O perfil `fretsense-highway@1.1.0` aprofunda a perspectiva, separa linha de acerto e receptores e moderniza pistas, notas e iluminação.
+- **Arquivos:** `src/engine/domain/presentation.ts`, `src/rendering`, `TrainingHighway.vue`, `PlayPage.vue`, `SettingsPage.vue`, preferências/snapshot/persistência, traduções e [roteiro de avaliação visual](./highway-visual-evaluation.md).
+- **Decisões relevantes:** o renderer consome snapshots e eventos julgados, sem conhecer regras ou entrada; novas sessões usam snapshot v2 e registram a referência visual, enquanto registros v1 continuam com apresentação ausente. Velocidade, escala, perspectiva, grade e política de movimento geram uma referência distinta; intensidade de efeitos e alto contraste permanecem cosméticos, embora sejam congelados no snapshot. Canvas 2D permanece o único backend.
+- **Desempenho por construção:** estilos e fundo são cacheados, resize ocorre fora do desenho, notas/marcadores usam culling, e efeitos reutilizam um pool de 16 entradas. Isso não equivale a medição em dispositivo.
+- **Revisão realizada:** somente análise estática manual de contratos, tipos, imports, ciclo de vida, persistência, layout, traduções e diferenças; nenhum teste, lint, formatação automática, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** legibilidade, foco/tela cheia, fluidez, DPR e sessões prolongadas dependem da execução do roteiro pelo desenvolvedor. Acessibilidade e robustez transversais serão consolidadas na etapa 15B; perfis de edições externas permanecem na etapa 19.
+- **Confirmação/erros informados pelo desenvolvedor:** o primeiro retorno em execução informou notas estáticas na highway e solicitou maior proximidade visual com jogos do gênero. A causa reativa foi corrigida e o perfil visual foi revisado; a reconfirmação em execução permanece pendente.
+- **Próxima etapa liberada:** etapa 15B, robustez, desempenho e acessibilidade.
 
 ### Etapa 15B — Consolidar robustez, desempenho e acessibilidade
 

@@ -17,7 +17,8 @@ Cada registro usa o ID da tentativa como chave idempotente e contém:
 - referências do gerador e das regras;
 - perfil do dispositivo com suas capacidades e calibração congelada;
 - métricas, diagnóstico, interrupções, elegibilidade e estado final;
-- campos explícitos para apresentação e edição de jogo, atualmente `null`, pois esses perfis só serão definidos nas etapas 15A e 19;
+- referência e snapshot completo da apresentação em tentativas v2; registros v1 continuam com apresentação ausente, sem inferência retroativa;
+- campo explícito para edição de jogo, ainda `null` até a etapa 19;
 - contagens e, quando elegíveis, eventos normalizados de entrada e julgamento.
 
 Uma segunda gravação idêntica para o mesmo ID não altera o registro. Dados diferentes com o mesmo ID causam conflito e o registro persistente existente não é sobrescrito.
@@ -30,7 +31,7 @@ Recriar o exercício significa usar a chart e a configuração congeladas. Repro
 
 ## Compatibilidade e migração
 
-A migração inicial cria os stores de sessão ao passar do banco inexistente para o esquema físico 1. A versão física 2 acrescenta `recommendations` e seu índice único por sessão de origem, preservando os registros de sessão no schema 1. Abertura com versão incompatível, migração bloqueada e registros com envelope não reconhecido não provocam limpeza automática. Registros incompatíveis permanecem no banco, são omitidos das consultas tipadas e aparecem como uma limitação no histórico.
+A migração inicial cria os stores de sessão ao passar do banco inexistente para o esquema físico 1. A versão física 2 acrescenta `recommendations` e seu índice único por sessão de origem, preservando o envelope de registro no schema 1. A etapa 15A introduz `SessionSnapshot` v2 dentro desse envelope; o parser continua aceitando snapshots v1 e mantém sua apresentação como ausente. Abertura com versão incompatível, migração bloqueada e registros com envelope não reconhecido não provocam limpeza automática. Registros incompatíveis permanecem no banco, são omitidos das consultas tipadas e aparecem como uma limitação no histórico.
 
 Não há importação de backup nesta etapa. Uma futura importação deve validar versão, estrutura e tamanho antes de gravar qualquer dado.
 

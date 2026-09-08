@@ -1,8 +1,11 @@
-import type { CalibrationProfile, Chart, DeviceProfile, InputAction, InputControl, SessionMode, SessionSnapshot } from '../domain';
+import type {
+  CalibrationProfile, Chart, DeviceProfile, InputAction, InputControl, SessionMode, SessionSnapshot,
+} from '../domain';
 import { ENGINE_LIMITS as limits } from '../domain/limits';
 import { parseDrillConfig } from '../domain/configuration';
 import { immutableCopy } from '../domain/immutable';
 import { FRETSENSE_V1_RULE_PROFILE } from '../domain/rules';
+import { DEFAULT_HIGHWAY_PRESENTATION, parseHighwayPresentationSnapshot } from '../domain/presentation';
 import {
   countFrets, readArray, readChoice, readInteger, readIsoDate, readNoteFrets, readNumber, readRecord,
   readReference, readString, requireCondition, requireSameData, sameReference,
@@ -19,6 +22,7 @@ export interface SessionPreparation {
   readonly config: unknown;
   readonly device: unknown;
   readonly calibration: unknown;
+  readonly presentation?: unknown;
 }
 
 function nullableText(value: unknown, path: string): string | null {
@@ -126,6 +130,15 @@ export function createSessionSnapshot(
   if (savedChart !== undefined) requireSameData(savedChart, generated, 'chart');
   const device = parseDeviceProfile(preparation.device);
   const calibration = parseCalibrationProfile(preparation.calibration);
+  const sourceSchemaVersion = (preparation as { readonly schemaVersion?: unknown }).schemaVersion;
+  const sourceVersion = sourceSchemaVersion === undefined ? null
+    : readChoice(sourceSchemaVersion, [1, 2], 'snapshot.schemaVersion');
+  requireCondition(sourceVersion !== 1 || preparation.presentation === undefined || preparation.presentation === null,
+    'presentation', 'Session snapshot v1 cannot contain a presentation.');
+  requireCondition(sourceVersion !== 2 || (preparation.presentation !== undefined && preparation.presentation !== null),
+    'presentation', 'Session snapshot v2 requires a presentation.');
+  const presentation = sourceVersion === 1 ? null : preparation.presentation === undefined
+    ? DEFAULT_HIGHWAY_PRESENTATION : parseHighwayPresentationSnapshot(preparation.presentation);
   requireCondition(sameReference(calibration.deviceProfile, device), 'calibration.deviceProfile', 'Calibration belongs to another device profile/version.');
   requireCondition(device.capabilities.maximumSimultaneousFrets === null || device.capabilities.maximumSimultaneousFrets >= config.chordSize,
     'device.capabilities.maximumSimultaneousFrets', 'Device cannot hold this chord size.');
@@ -134,17 +147,17 @@ export function createSessionSnapshot(
     || device.capabilities.strum !== 'unavailable',
     'device.capabilities.strum', 'This exercise requires a strum action.');
   return immutableCopy({
-    schemaVersion: 1,
+    schemaVersion: (presentation === null ? 1 : 2),
     id: readString(identity.id, 'session.id'),
     createdAtIso: readIsoDate(identity.createdAtIso, 'session.createdAtIso'),
     mode: readChoice(preparation.mode, ['practice', 'assessment'], 'session.mode'),
-    config, chart: generated, rules: FRETSENSE_V1_RULE_PROFILE, device, calibration,
+    config, chart: generated, rules: FRETSENSE_V1_RULE_PROFILE, device, calibration, presentation,
   });
 }
 
 /** Repetição só aceita snapshots íntegros da versão atualmente suportada. */
 export function repeatSessionSnapshot(previous: SessionSnapshot, identity: SessionIdentity): SessionSnapshot {
-  readChoice(previous.schemaVersion, [1], 'snapshot.schemaVersion');
+  readChoice(previous.schemaVersion, [1, 2], 'snapshot.schemaVersion');
   requireCondition(identity.id !== previous.id, 'session.id', 'A repeat needs a new session ID.');
   requireSameData(previous.rules, FRETSENSE_V1_RULE_PROFILE, 'snapshot.rules');
   return createSessionSnapshot(previous, identity, previous.chart);

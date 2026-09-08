@@ -17,6 +17,8 @@ export const useInterfaceStore = defineStore('interface', {
       locale: repository.snapshot.interface.locale,
       theme: repository.snapshot.interface.theme,
       reducedMotion: repository.snapshot.interface.reducedMotion,
+      highway: { ...repository.snapshot.highway },
+      trainingFocus: false,
       profiles: repository.snapshot.profiles,
       selectedProfileId: repository.snapshot.selectedProfileId,
       selectedGamepad: null as SelectedGamepad | null,
@@ -46,6 +48,14 @@ export const useInterfaceStore = defineStore('interface', {
       repository.selectProfile(id);
       this.selectedProfileId = repository.snapshot.selectedProfileId;
       this.storageStatus = repository.status;
+    },
+    persistHighway() {
+      const repository = getPreferencesRepository();
+      repository.saveHighway(this.highway);
+      this.storageStatus = repository.status;
+    },
+    setTrainingFocus(value: boolean) {
+      this.trainingFocus = value;
     },
     selectGamepad(connection: GamepadConnection | null) {
       this.selectedGamepad = connection

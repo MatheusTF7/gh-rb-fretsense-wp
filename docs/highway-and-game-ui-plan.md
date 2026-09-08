@@ -1,6 +1,6 @@
 # Plano de refinamento da highway e da tela de jogo
 
-**Estado:** planejamento; refinamentos visuais na etapa 15A, consolidação transversal na etapa 15B e extensão por edição na etapa 19.
+**Estado:** etapa 15A implementada e revisada estaticamente; consolidação transversal permanece na etapa 15B e extensão por edição na etapa 19.
 
 Distribuição deste documento:
 
@@ -278,3 +278,5 @@ gramática visual e o comportamento documentado, não os recursos proprietários
 A revisão do agente permanece exclusivamente estática. Avaliação de fluidez,
 latência percebida, fidelidade visual e compatibilidade de dispositivos depende
 de execução e confirmação pelo desenvolvedor.
+
+O roteiro executável de capturas e cenários está em [avaliação visual da highway](./highway-visual-evaluation.md).

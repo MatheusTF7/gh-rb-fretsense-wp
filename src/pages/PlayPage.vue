@@ -1,6 +1,6 @@
 <template>
   <PageFrame class="practice-page">
-    <div ref="captureArea" class="practice-capture" tabindex="-1">
+    <div ref="captureArea" class="practice-capture" :class="{ 'practice-capture--focus': focusMode }" tabindex="-1">
       <PageHeading :eyebrow="t('navigation.play')" :title="t('play.title')" :description="t('play.description')">
         <template #actions>
           <span class="status-tag">{{ t(snapshot ? `play.state.${state}` : 'play.state.setup') }}</span>
@@ -97,6 +97,28 @@
                   :label="t('play.adaptation.maximumBlocks')" :disable="starting || !adaptiveEnabled" />
               </div>
             </fieldset>
+
+            <fieldset class="practice-fieldset visual-settings">
+              <legend>{{ t('play.visual.title') }}</legend>
+              <p class="muted-text">{{ t('play.visual.description') }}</p>
+              <div class="practice-fields">
+                <label>{{ t('play.visual.speed', { value: ui.highway.scrollSpeed }) }}
+                  <q-slider v-model="ui.highway.scrollSpeed" :min="180" :max="600" :step="20" label color="primary" :disable="starting" />
+                </label>
+                <label>{{ t('play.visual.noteScale', { value: Math.round(ui.highway.noteScale * 100) }) }}
+                  <q-slider v-model="ui.highway.noteScale" :min="0.8" :max="1.3" :step="0.05" label color="primary" :disable="starting" />
+                </label>
+                <label>{{ t('play.visual.perspective', { value: Math.round(ui.highway.perspectiveIntensity * 100) }) }}
+                  <q-slider v-model="ui.highway.perspectiveIntensity" :min="0" :max="1" :step="0.05" label color="primary" :disable="starting" />
+                </label>
+                <label>{{ t('play.visual.gridContrast', { value: Math.round(ui.highway.gridContrast * 100) }) }}
+                  <q-slider v-model="ui.highway.gridContrast" :min="0" :max="1" :step="0.05" label color="primary" :disable="starting" />
+                </label>
+                <q-select v-model="ui.highway.effects" :options="effectOptions" emit-value map-options
+                  :label="t('play.visual.effects')" :disable="starting" />
+                <q-toggle v-model="ui.highway.highContrast" :label="t('play.visual.highContrast')" color="primary" :disable="starting" />
+              </div>
+            </fieldset>
           </q-expansion-item>
 
           <div class="practice-fields">
@@ -119,10 +141,17 @@
                 <div><dt>{{ t('play.notesPlanned') }}</dt><dd>{{ preview.chart.notes.length }}</dd></div>
                 <div><dt>{{ t('play.bpm') }}</dt><dd>{{ preview.config.bpm }}</dd></div>
                 <div><dt>{{ t('play.seed') }}</dt><dd>{{ preview.config.seed }}</dd></div>
+                <div><dt>{{ t('play.visual.presentation') }}</dt><dd>{{ presentation.profile.displayName }}</dd></div>
               </dl>
               <p>{{ requirementText }}</p>
             </section>
             <ChartPreview :chart="preview.chart" />
+            <section class="visual-preview" aria-labelledby="visual-preview-title">
+              <h3 id="visual-preview-title">{{ t('play.visual.preview') }}</h3>
+              <TrainingHighway :chart="preview.chart" :presentation="presentation" :active-time-ms="0"
+                :visual-offset-ms="0" :active-frets="0" :judgments="emptyJudgments"
+                :label="t('play.visual.previewLabel')" />
+            </section>
             <FeedbackBanner :tone="compatibility.compatible ? 'info' : 'error'"
               :message="t(`play.compatibility.${compatibility.reason ?? 'compatible'}`)" />
           </template>
@@ -148,34 +177,60 @@
 
       <template v-else-if="!isFinished">
         <FeedbackBanner v-if="snapshot.mode === 'assessment'" class="q-mb-md" :message="t('play.assessmentFrozen')" />
-        <section class="gameplay-status" :aria-label="t('play.sessionStatus')">
-          <div><span>{{ t('play.combo') }}</span><strong>{{ evaluation?.metrics.finalCombo ?? 0 }}</strong></div>
-          <div><span>{{ t('play.notes') }}</span><strong>{{ resolvedNotes }}/{{ snapshot.chart.notes.length }}</strong></div>
-          <div><span>{{ t('play.bpm') }}</span><strong>{{ snapshot.chart.bpm }}</strong></div>
-          <div><span>{{ t('play.input') }}</span><strong>{{ view.inputCount }}</strong></div>
-          <div v-if="evaluation?.pendingSustains"><span>{{ t('play.pendingSustains') }}</span><strong>{{ evaluation.pendingSustains }}</strong></div>
+        <section ref="gameplayArea" class="gameplay-frame" :class="{ 'gameplay-frame--focus': focusMode }">
+          <header class="gameplay-toolbar">
+            <span class="status-tag">{{ t(`play.state.${state}`) }}</span>
+            <div>
+              <q-btn flat dense no-caps :icon="focusMode ? 'fullscreen_exit' : 'center_focus_strong'"
+                :label="t(focusMode ? 'play.focusExit' : 'play.focusEnter')" @click="toggleFocus" />
+              <q-btn flat dense no-caps :icon="fullscreenActive ? 'fullscreen_exit' : 'fullscreen'"
+                :label="t(fullscreenActive ? 'play.fullscreenExit' : 'play.fullscreenEnter')" @click="toggleFullscreen" />
+            </div>
+          </header>
+          <p class="sr-status" role="status" aria-live="polite">{{ fullscreenMessage }}</p>
+          <div class="gameplay-grid">
+            <div class="highway-column">
+              <q-linear-progress :value="progress" color="primary" track-color="grey-9" size="8px" rounded :aria-label="t('play.progress')" />
+              <div class="highway-stage">
+                <TrainingHighway :chart="snapshot.chart" :presentation="activePresentation" :active-time-ms="view.activeTimeMs"
+                  :visual-offset-ms="snapshot.calibration.visualOffsetMs" :active-frets="view.activeFrets"
+                  :judgments="judgments" :label="highwayLabel" />
+                <div v-if="state === 'countdown'" class="countdown-overlay" aria-live="polite">
+                  <span>{{ countdownBeat }}</span><p>{{ t('play.countdown') }}</p>
+                </div>
+                <div v-if="isPaused" class="pause-overlay" role="dialog" aria-modal="true" :aria-labelledby="'pause-title'">
+                  <q-icon name="pause_circle" size="56px" aria-hidden="true" />
+                  <h2 id="pause-title">{{ t('play.paused') }}</h2><p>{{ t('play.pausedDescription') }}</p>
+                  <q-btn ref="resumeButton" unelevated color="primary" no-caps icon="play_arrow" :loading="starting"
+                    :label="t('play.resume')" @click="resumeAttempt" />
+                </div>
+              </div>
+              <p class="judgment-feedback" role="status" aria-live="polite">{{ feedbackText }}</p>
+            </div>
+            <aside class="gameplay-status" :aria-label="t('play.sessionStatus')">
+              <div class="gameplay-status__primary"><span>{{ t('play.combo') }}</span><strong>{{ evaluation?.metrics.finalCombo ?? 0 }}</strong></div>
+              <div><span>{{ t('play.notes') }}</span><strong>{{ resolvedNotes }}/{{ snapshot.chart.notes.length }}</strong></div>
+              <div><span>{{ t('play.bpm') }}</span><strong>{{ snapshot.chart.bpm }}</strong></div>
+              <div><span>{{ t('play.mode.label') }}</span><strong>{{ t(`play.mode.${snapshot.mode}`) }}</strong></div>
+              <div><span>{{ t('play.attemptState') }}</span><strong>{{ t(`play.state.${state}`) }}</strong></div>
+              <q-expansion-item dense icon="info" :label="t('play.secondaryStatus')">
+                <div class="secondary-status">
+                  <span>{{ t('play.input') }}: {{ view.inputCount }}</span>
+                  <span v-if="evaluation?.pendingSustains">{{ t('play.pendingSustains') }}: {{ evaluation.pendingSustains }}</span>
+                </div>
+              </q-expansion-item>
+            </aside>
+          </div>
+          <FretLegend />
+          <div class="practice-actions practice-actions--centered">
+            <q-btn v-if="isActive" unelevated color="primary" no-caps icon="pause" :label="t('play.pause')" @click="pause" />
+            <q-btn outline no-caps icon="restart_alt"
+              :label="armedAction === 'restart' ? t('play.confirmRestart') : t(snapshot.mode === 'assessment' ? 'play.restartAssessment' : 'play.restart')"
+              :loading="starting" @click="requestAction('restart')" />
+            <q-btn flat no-caps icon="close" :label="armedAction === 'exit' ? t('play.confirmExit') : t('play.exit')"
+              @click="requestAction('exit')" />
+          </div>
         </section>
-        <q-linear-progress :value="progress" color="primary" track-color="grey-9" size="8px" rounded :aria-label="t('play.progress')" />
-        <div class="highway-stage">
-          <TrainingHighway :snapshot="snapshot" :active-time-ms="view.activeTimeMs" :active-frets="view.activeFrets"
-            :judgments="judgments" :label="highwayLabel" />
-          <div v-if="state === 'countdown'" class="countdown-overlay" aria-live="polite">
-            <span>{{ countdownBeat }}</span><p>{{ t('play.countdown') }}</p>
-          </div>
-          <div v-if="isPaused" class="pause-overlay">
-            <q-icon name="pause_circle" size="56px" aria-hidden="true" />
-            <h2>{{ t('play.paused') }}</h2><p>{{ t('play.pausedDescription') }}</p>
-          </div>
-        </div>
-        <p class="judgment-feedback" role="status" aria-live="polite">{{ feedbackText }}</p>
-        <FretLegend />
-        <div class="practice-actions practice-actions--centered">
-          <q-btn v-if="isActive" unelevated color="primary" no-caps icon="pause" :label="t('play.pause')" @click="pause" />
-          <q-btn v-if="isPaused" unelevated color="primary" no-caps icon="play_arrow" :loading="starting" :label="t('play.resume')" @click="resume" />
-          <q-btn outline no-caps icon="restart_alt" :label="t(snapshot.mode === 'assessment' ? 'play.restartAssessment' : 'play.restart')"
-            :loading="starting" @click="restart" />
-          <q-btn flat no-caps icon="close" :label="t('play.exit')" @click="exitPractice" />
-        </div>
       </template>
 
       <section v-else-if="result" class="surface-card result-card" aria-labelledby="practice-result-title">
@@ -222,10 +277,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import type { Fret, RatioMetric } from '@/engine/domain';
+import type { Fret, JudgmentEvent, RatioMetric } from '@/engine/domain';
 import { TECHNIQUE_DESCRIPTORS } from '@/catalog';
 import { useTrainingSession } from '@/composables/useTrainingSession';
 import PageFrame from '@/components/PageFrame.vue';
@@ -241,16 +297,24 @@ const { t } = useI18n();
 const router = useRouter();
 const training = useTrainingSession();
 const {
-  history, adaptation, captureArea, profileId, profile, connectionId, matchingConnections, selectedPreset,
+  ui, history, adaptation, captureArea, profileId, profile, connectionId, matchingConnections, selectedPreset,
   technique, level, descriptor, mode, bpm, subdivision, allowedFrets, lengthKind, lengthValue,
   automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts, requireArticulation,
   requireStrumDirection, requireFullSustains, focusSegment, segmentOptions, audioMode, calibrationId,
-  availableCalibrations, discoveryUnavailable, starting, failure, snapshot, view, evaluation,
+  availableCalibrations, discoveryUnavailable, starting, failure, snapshot, view, evaluation, presentation,
   judgments, latestJudgment, result, preview, requirements, compatibility, state, isActive, isPaused,
   directionGoalAvailable, sustainGoalAvailable, isFinished, countdownBeat, resolvedNotes, progress,
   refreshDevices, startAttempt, pause, resume,
   restart, repeat, vary, applyRecommendation, adjustRecommendation, ignoreRecommendation, leave, reset,
 } = training;
+const gameplayArea = ref<HTMLElement | null>(null);
+const resumeButton = ref<ComponentPublicInstance | null>(null);
+const focusMode = ref(false);
+const fullscreenActive = ref(false);
+const fullscreenMessage = ref('');
+const armedAction = ref<'restart' | 'exit' | null>(null);
+const emptyJudgments: readonly JudgmentEvent[] = Object.freeze([]);
+let armTimer: ReturnType<typeof setTimeout> | null = null;
 
 const adaptiveEnabled = computed({
   get: () => adaptation.adaptiveEnabled,
@@ -282,6 +346,9 @@ const audioOptions = computed(() => [
   { value: 'enabled', label: t('play.audioEnabled') },
   { value: 'silent', label: t('play.audioSilent') },
 ]);
+const effectOptions = computed(() => ['full', 'reduced', 'off'].map((value) => ({
+  value, label: t(`play.visual.effectLevels.${value}`),
+})));
 const calibrationOptions = computed(() => [
   { value: null, label: t('play.calibrationDefault') },
   ...availableCalibrations.value.map((item) => ({ value: item.id, label: t('play.calibrationSaved', {
@@ -289,6 +356,7 @@ const calibrationOptions = computed(() => [
   }) })),
 ]);
 const highwayLabel = computed(() => t('play.highwayLabel', { current: resolvedNotes.value, total: snapshot.value?.chart.notes.length ?? 0 }));
+const activePresentation = computed(() => snapshot.value?.presentation ?? presentation.value);
 const hasSustains = computed(() => snapshot.value?.chart.notes.some((note) => note.durationTicks > 0) ?? false);
 const requirementText = computed(() => requirements.value ? t('play.summary.requirements', {
   strum: t(requirements.value.needsStrum ? 'common.yes' : 'common.no'),
@@ -324,6 +392,65 @@ function signed(value: number) { return value > 0 ? `+${value}` : String(value);
 function ratioLabel(metric: RatioMetric) { return metric.status === 'available' ? `${Math.round(metric.value * 100)}%` : t('play.unavailable'); }
 async function useSilent() { audioMode.value = 'silent'; await reset(); }
 async function exitPractice() { await leave(); await router.push({ name: 'train' }); }
+async function resumeAttempt() {
+  await resume();
+  await nextTick();
+  captureArea.value?.focus({ preventScroll: true });
+}
+
+function toggleFocus() {
+  focusMode.value = !focusMode.value;
+  ui.setTrainingFocus(focusMode.value);
+}
+
+function fullscreenChanged() {
+  fullscreenActive.value = document.fullscreenElement === gameplayArea.value;
+  fullscreenMessage.value = t(fullscreenActive.value ? 'play.fullscreenActive' : 'play.fullscreenInactive');
+}
+
+async function toggleFullscreen() {
+  fullscreenMessage.value = '';
+  try {
+    if (document.fullscreenElement === gameplayArea.value) await document.exitFullscreen();
+    else if (gameplayArea.value?.requestFullscreen) await gameplayArea.value.requestFullscreen();
+    else fullscreenMessage.value = t('play.fullscreenUnavailable');
+  } catch {
+    fullscreenMessage.value = t('play.fullscreenUnavailable');
+  }
+}
+
+async function requestAction(action: 'restart' | 'exit') {
+  if (armedAction.value !== action) {
+    armedAction.value = action;
+    if (armTimer !== null) clearTimeout(armTimer);
+    armTimer = setTimeout(() => { armedAction.value = null; armTimer = null; }, 5000);
+    return;
+  }
+  armedAction.value = null;
+  if (armTimer !== null) clearTimeout(armTimer);
+  armTimer = null;
+  if (action === 'restart') await restart();
+  else await exitPractice();
+}
+
+watch(isPaused, async (paused) => {
+  if (!paused) return;
+  await nextTick();
+  const element = resumeButton.value?.$el;
+  if (element instanceof HTMLElement) element.focus();
+});
+watch(isFinished, (finished) => {
+  if (!finished) return;
+  focusMode.value = false;
+  ui.setTrainingFocus(false);
+});
+onMounted(() => document.addEventListener('fullscreenchange', fullscreenChanged));
+onBeforeUnmount(() => {
+  if (armTimer !== null) clearTimeout(armTimer);
+  document.removeEventListener('fullscreenchange', fullscreenChanged);
+  if (document.fullscreenElement === gameplayArea.value) void document.exitFullscreen();
+  ui.setTrainingFocus(false);
+});
 </script>
 
 <style scoped>
@@ -336,6 +463,8 @@ async function exitPractice() { await leave(); await router.push({ name: 'train'
 .practice-option p { margin: 0 0 0 40px; }
 .practice-fieldset { min-width: 0; margin: 20px 0 0; padding: 16px; border: 1px solid var(--fs-border); border-radius: 10px; }
 .practice-fieldset legend { padding: 0 8px; font-weight: 700; }
+.visual-settings > p { margin-bottom: 18px; }
+.visual-settings label { display: grid; gap: 8px; font-weight: 500; }
 .goal-toggles { display: grid; align-content: center; }
 .attempt-summary { padding: 18px; border: 1px solid var(--fs-border); border-radius: 12px; }
 .attempt-summary h3 { margin-top: 0; }
@@ -348,22 +477,70 @@ async function exitPractice() { await leave(); await router.push({ name: 'train'
 .practice-context p + p { margin-top: 6px; }
 .practice-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .practice-actions--centered { justify-content: center; margin-top: 22px; }
-.gameplay-status { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.gameplay-status > div, .result-metrics > div { padding: 12px 14px; border: 1px solid var(--fs-border); border-radius: 10px; background: var(--fs-surface); }
+.visual-preview { display: grid; gap: 12px; }
+.visual-preview h3 { margin: 0; }
+.visual-preview :deep(.training-highway) { height: 320px; }
+.gameplay-frame {
+  --fs-surface: #10151d;
+  --fs-raised: #151c26;
+  --fs-text: #f2f5f8;
+  --fs-muted: #a7b1bf;
+  --fs-border: #293342;
+  --fs-accent: #b9a7ff;
+  --fs-accent-soft: #292046;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgb(145 160 184 / 20%);
+  border-radius: 24px;
+  color: var(--fs-text);
+  background:
+    radial-gradient(circle at 48% 0, rgb(108 78 214 / 13%), transparent 34%),
+    linear-gradient(145deg, #0d1219, #080b11 72%);
+  box-shadow: 0 22px 60px rgb(0 0 0 / 22%);
+}
+.gameplay-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px; }
+.gameplay-toolbar > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.gameplay-toolbar :deep(.q-btn) { color: var(--fs-muted); }
+.gameplay-grid { display: grid; grid-template-columns: minmax(0, 1fr) 184px; align-items: stretch; gap: 18px; }
+.highway-column { min-width: 0; }
+.gameplay-status { display: grid; align-content: start; gap: 0; padding: 4px 0 4px 18px; border-left: 1px solid var(--fs-border); }
+.gameplay-status > div { padding: 13px 10px; border-bottom: 1px solid rgb(167 177 191 / 12%); }
+.result-metrics > div { padding: 12px 14px; border: 1px solid var(--fs-border); border-radius: 10px; background: var(--fs-surface); }
 .gameplay-status span, .result-metrics span { display: block; color: var(--fs-muted); font-size: .75rem; }
-.gameplay-status strong, .result-metrics strong { display: block; margin-top: 2px; font-size: 1.15rem; }
-.highway-stage { position: relative; margin-top: 14px; }
-.countdown-overlay, .pause-overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; padding: 24px; border-radius: 16px; color: white; background: rgb(7 12 19 / 72%); text-align: center; }
+.gameplay-status strong, .result-metrics strong { display: block; margin-top: 1px; font-size: 1.25rem; line-height: 1.25; }
+.gameplay-status__primary strong { color: var(--fs-text); font-size: 2.35rem; letter-spacing: -.04em; }
+.secondary-status { display: grid; gap: 6px; padding: 8px 12px 14px; }
+.sr-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.highway-stage { position: relative; margin-top: 10px; }
+.countdown-overlay, .pause-overlay { position: absolute; z-index: 2; inset: 0; display: grid; place-content: center; justify-items: center; padding: 24px; border-radius: 16px; color: white; background: rgb(7 12 19 / 78%); text-align: center; }
 .countdown-overlay span { font-size: clamp(4rem, 14vw, 8rem); font-weight: 800; line-height: 1; }
 .countdown-overlay p, .pause-overlay p { margin: 10px 0 0; }
 .pause-overlay h2 { margin: 12px 0 0; color: white; }
-.judgment-feedback { min-height: 32px; margin: 18px 0 0; color: var(--fs-accent); font-size: 1.1rem; font-weight: 700; text-align: center; }
+.pause-overlay .q-btn { margin-top: 22px; }
+.judgment-feedback { min-height: 32px; margin: 10px 0 0; color: var(--fs-accent); font-size: 1.1rem; font-weight: 700; text-align: center; }
+.gameplay-frame :deep(.fret-legend) { margin-top: 2px; }
+.gameplay-frame :deep(.fret-legend > li) { background: rgb(255 255 255 / 4%); }
+.practice-capture--focus :deep(.page-heading), .practice-capture--focus > .feedback-banner { display: none; }
+.gameplay-frame--focus { max-width: 1440px; margin: 0 auto; }
+.gameplay-frame:fullscreen { overflow: auto; padding: 18px; background: #080b11; }
+.gameplay-frame:fullscreen .gameplay-grid { min-height: calc(100vh - 180px); }
+.gameplay-frame:fullscreen :deep(.training-highway) { height: calc(100vh - 190px); }
 .result-card { max-width: 900px; margin: 0 auto; }
 .result-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 28px 0; }
 .text-negative { color: var(--q-negative); }
 @media (max-width: 800px) {
   .practice-fields, .result-metrics, .attempt-summary dl { grid-template-columns: 1fr; }
-  .gameplay-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gameplay-grid { grid-template-columns: minmax(0, 1fr); }
+  .gameplay-status { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 0 0; border-top: 1px solid var(--fs-border); border-left: 0; }
+  .gameplay-status .q-expansion-item { grid-column: 1 / -1; }
   .practice-objective { flex-direction: column; }
+}
+@media (max-width: 520px) {
+  .gameplay-frame { padding: 12px; border-radius: 18px; }
+  .gameplay-toolbar { align-items: stretch; flex-direction: column; }
+  .gameplay-toolbar > div { justify-content: flex-start; }
+  .gameplay-status { grid-template-columns: minmax(0, 1fr); }
+  .gameplay-status .q-expansion-item { grid-column: auto; }
 }
 </style>

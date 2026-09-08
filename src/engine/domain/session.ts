@@ -3,6 +3,7 @@ import type { DrillConfig } from './drill';
 import type { CalibrationProfile, DeviceProfile } from './input';
 import type { Chart, Milliseconds } from './music';
 import type { RuleProfile } from './rules';
+import type { HighwayPresentationSnapshot } from './presentation';
 
 export type SessionMode = 'practice' | 'assessment';
 export type SessionState =
@@ -15,7 +16,7 @@ export type SessionState =
   | 'aborted';
 
 export interface SessionSnapshot {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 1 | 2;
   readonly id: string;
   readonly createdAtIso: string;
   readonly mode: SessionMode;
@@ -24,6 +25,8 @@ export interface SessionSnapshot {
   readonly rules: RuleProfile;
   readonly device: DeviceProfile;
   readonly calibration: CalibrationProfile;
+  /** null existe somente em registros v1; novas tentativas congelam a apresentação completa. */
+  readonly presentation: HighwayPresentationSnapshot | null;
 }
 
 export type InterruptionReason =

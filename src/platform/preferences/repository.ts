@@ -1,5 +1,5 @@
-import type { DeviceProfile } from '@/engine/domain';
-import { immutableCopy } from '@/engine/domain/immutable';
+import type { DeviceProfile, HighwayVisualPreferences } from '@/engine/domain';
+import { DEFAULT_HIGHWAY_PREFERENCES, immutableCopy, parseHighwayVisualPreferences } from '@/engine/domain';
 import { readArray, readBoolean, readChoice, readRecord, readString, requireCondition } from '@/engine/domain/validation';
 import { DEFAULT_KEYBOARD, validateMapping } from '../input/mapping';
 
@@ -9,8 +9,9 @@ export interface InterfacePreferences {
   readonly reducedMotion: boolean;
 }
 export interface PreferencesData {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly interface: InterfacePreferences;
+  readonly highway: HighwayVisualPreferences;
   readonly profiles: readonly DeviceProfile[];
   readonly selectedProfileId: string;
 }
@@ -20,13 +21,15 @@ const MAX_SIZE = 262_144;
 
 function parse(value: unknown): PreferencesData {
   const data = readRecord(value, 'preferences');
-  readChoice(data.schemaVersion, [1], 'preferences.schemaVersion');
+  const schemaVersion = readChoice(data.schemaVersion, [1, 2], 'preferences.schemaVersion');
   const ui = readRecord(data.interface, 'preferences.interface');
   const profiles = readArray(data.profiles, 'preferences.profiles', 16).map((profile) => validateMapping(profile, true));
   requireCondition(profiles.length > 0 && new Set(profiles.map((profile) => profile.id)).size === profiles.length, 'profiles', 'Profile IDs must be unique.');
   const selectedProfileId = readString(data.selectedProfileId, 'preferences.selectedProfileId');
   requireCondition(profiles.some((profile) => profile.id === selectedProfileId), 'selectedProfileId', 'Selected profile is missing.');
-  return immutableCopy({ schemaVersion: 1, profiles, selectedProfileId, interface: {
+  const highway = schemaVersion === 1 ? DEFAULT_HIGHWAY_PREFERENCES
+    : parseHighwayVisualPreferences(data.highway, 'preferences.highway');
+  return immutableCopy({ schemaVersion: 2, profiles, selectedProfileId, highway, interface: {
     locale: readChoice(ui.locale, ['pt-BR', 'en-US'], 'preferences.locale'),
     theme: readChoice(ui.theme, ['dark', 'light', 'system'], 'preferences.theme'),
     reducedMotion: readBoolean(ui.reducedMotion, 'preferences.reducedMotion'),
@@ -34,8 +37,9 @@ function parse(value: unknown): PreferencesData {
 }
 
 export class PreferencesRepository {
-  private data: PreferencesData = immutableCopy({ schemaVersion: 1,
+  private data: PreferencesData = immutableCopy({ schemaVersion: 2,
     interface: { locale: 'pt-BR', theme: 'dark', reducedMotion: false },
+    highway: DEFAULT_HIGHWAY_PREFERENCES,
     profiles: [DEFAULT_KEYBOARD], selectedProfileId: DEFAULT_KEYBOARD.id,
   });
   private state: StorageStatus = 'saved';
@@ -48,7 +52,10 @@ export class PreferencesRepository {
     if (text === null) { this.retrySave(); return; }
     try {
       requireCondition(text.length <= MAX_SIZE, 'preferences', 'Stored data is too large.');
-      this.data = parse(JSON.parse(text) as unknown);
+      const stored = JSON.parse(text) as unknown;
+      const version = readRecord(stored, 'preferences').schemaVersion;
+      this.data = parse(stored);
+      if (version === 1) this.retrySave();
     } catch {
       // Preserva o valor original: nenhuma gravação automática sobre dados incompatíveis.
       this.state = 'incompatible';
@@ -60,6 +67,7 @@ export class PreferencesRepository {
   get status(): StorageStatus { return this.state; }
 
   saveInterface(preferences: InterfacePreferences): void { this.update({ ...this.data, interface: preferences }); }
+  saveHighway(preferences: HighwayVisualPreferences): void { this.update({ ...this.data, highway: preferences }); }
   selectProfile(id: string): void { this.update({ ...this.data, selectedProfileId: id }); }
   saveProfile(profile: DeviceProfile): void {
     const current = this.data.profiles.find((item) => item.id === profile.id);

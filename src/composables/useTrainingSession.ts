@@ -5,7 +5,7 @@ import type {
   SessionMode, SessionResult, SessionSnapshot, Subdivision, Technique,
 } from '@/engine/domain';
 import {
-  countFrets, EngineError, FRET_BITS, MANUAL_PATTERN_REFERENCE,
+  countFrets, createHighwayPresentationSnapshot, EngineError, FRET_BITS, MANUAL_PATTERN_REFERENCE,
   parseDrillConfig, requireCondition, sameReference,
 } from '@/engine/domain';
 import { DRILL_PRESETS, getDrillPreset, getTechniqueDescriptor } from '@/catalog';
@@ -137,6 +137,11 @@ export function useTrainingSession() {
   const judgments = shallowRef<readonly JudgmentEvent[]>(Object.freeze([]));
   const latestJudgment = shallowRef<JudgmentEvent | null>(null);
   const result = shallowRef<SessionResult | null>(null);
+  const systemReducedMotion = ref(false);
+  const presentation = computed(() => createHighwayPresentationSnapshot(
+    ui.highway,
+    ui.reducedMotion || systemReducedMotion.value ? 'reduced' : 'full',
+  ));
 
   function saveDraft(config: DrillConfig): void {
     workspace.saveDraft(config, selectedPreset.value?.id ?? config.pattern.id, focusSegment.value, {
@@ -323,6 +328,7 @@ export function useTrainingSession() {
   let audio: SessionAudio | null = null;
   let discovery: GamepadDiscovery | null = null;
   let discoveryTimer: ReturnType<typeof setInterval> | null = null;
+  let motionQuery: MediaQueryList | null = null;
   let frame: number | null = null;
   let operation = 0;
   let disposed = false;
@@ -505,7 +511,7 @@ export function useTrainingSession() {
       adaptation.beginAttempt();
       void adaptation.finalizeAdjustment(config);
       const calibration = resolveCalibration(nextAudio);
-      next.prepare({ mode: mode.value, config, device: profile.value, calibration });
+      next.prepare({ mode: mode.value, config, device: profile.value, calibration, presentation: presentation.value });
       next.enableInitialJudgment();
       activatePrepared(next, nextAudio);
     } catch (error) {
@@ -673,6 +679,10 @@ export function useTrainingSession() {
     if (selected && !options.includes(selected)) focusSegment.value = null;
   });
 
+  function updateSystemMotion(event: MediaQueryListEvent): void {
+    systemReducedMotion.value = event.matches;
+  }
+
   const requestedPreset = typeof route.query.preset === 'string' ? route.query.preset : null;
   const draftConfig = workspace.draftConfig;
   const draftPresetId = workspace.draftPresetId;
@@ -692,6 +702,9 @@ export function useTrainingSession() {
   }
 
   onMounted(() => {
+    motionQuery = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null;
+    systemReducedMotion.value = motionQuery?.matches ?? false;
+    motionQuery?.addEventListener('change', updateSystemMotion);
     discovery = new GamepadDiscovery();
     refreshDevices();
     discoveryTimer = setInterval(refreshDevices, 1000);
@@ -707,6 +720,8 @@ export function useTrainingSession() {
     audio = null;
     if (discoveryTimer !== null) clearInterval(discoveryTimer);
     discovery?.dispose();
+    motionQuery?.removeEventListener('change', updateSystemMotion);
+    motionQuery = null;
   });
 
   return {
@@ -715,7 +730,7 @@ export function useTrainingSession() {
     lengthKind, lengthValue, automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts,
     requireArticulation, requireStrumDirection, requireFullSustains, focusSegment, segmentOptions,
     audioMode, calibrationId, availableCalibrations, discoveryUnavailable, starting, failure,
-    snapshot, view, evaluation, judgments, latestJudgment, result, configurationLocked,
+    snapshot, view, evaluation, judgments, latestJudgment, result, presentation, configurationLocked,
     preview, requirements, compatibility, directionGoalAvailable, sustainGoalAvailable,
     state, isActive, isPaused, isFinished, countdownBeat,
     resolvedNotes, progress, selectPreset, refreshDevices, startAttempt, pause, resume,

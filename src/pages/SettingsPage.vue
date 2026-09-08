@@ -19,6 +19,21 @@
           <q-toggle v-model="ui.reducedMotion" :label="t('settings.reducedMotion')" color="primary" />
           <p id="motion-help">{{ t('settings.reducedMotionDescription') }}</p>
         </fieldset>
+        <fieldset class="surface-card settings-group highway-settings" aria-describedby="highway-help">
+          <legend>{{ t('settings.highway.title') }}</legend>
+          <p id="highway-help">{{ t('settings.highway.description') }}</p>
+          <label>{{ t('settings.highway.speed', { value: ui.highway.scrollSpeed }) }}</label>
+          <q-slider v-model="ui.highway.scrollSpeed" :min="180" :max="600" :step="20" label color="primary" />
+          <label>{{ t('settings.highway.noteScale', { value: Math.round(ui.highway.noteScale * 100) }) }}</label>
+          <q-slider v-model="ui.highway.noteScale" :min="0.8" :max="1.3" :step="0.05" label color="primary" />
+          <label>{{ t('settings.highway.perspective', { value: Math.round(ui.highway.perspectiveIntensity * 100) }) }}</label>
+          <q-slider v-model="ui.highway.perspectiveIntensity" :min="0" :max="1" :step="0.05" label color="primary" />
+          <label>{{ t('settings.highway.gridContrast', { value: Math.round(ui.highway.gridContrast * 100) }) }}</label>
+          <q-slider v-model="ui.highway.gridContrast" :min="0" :max="1" :step="0.05" label color="primary" />
+          <q-select v-model="ui.highway.effects" :options="effectOptions" emit-value map-options
+            :label="t('settings.highway.effects')" />
+          <q-toggle v-model="ui.highway.highContrast" :label="t('settings.highway.highContrast')" color="primary" />
+        </fieldset>
       </div>
       <section class="surface-card settings-reference">
         <q-icon name="visibility" class="card-icon" aria-hidden="true" />
@@ -50,4 +65,12 @@ const themeOptions = computed(() => [
   { label: t('settings.light'), value: 'light' },
   { label: t('settings.system'), value: 'system' },
 ]);
+const effectOptions = computed(() => ['full', 'reduced', 'off'].map((value) => ({
+  value, label: t(`settings.highway.effectLevels.${value}`),
+})));
 </script>
+
+<style scoped>
+.highway-settings { display: grid; gap: 10px; }
+.highway-settings p { margin-bottom: 6px; }
+</style>

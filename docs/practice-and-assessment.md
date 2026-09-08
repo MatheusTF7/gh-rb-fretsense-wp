@@ -19,7 +19,7 @@ O foco em trecho converte as notas daquele segmento em `manual-pattern@1.0.0`, p
 
 ## Tentativa congelada
 
-Ao iniciar, configuração, chart, regras, dispositivo e calibração são copiados para um `SessionSnapshot`. Controles de preparação deixam de estar disponíveis até encerrar ou abortar a tentativa. Sair da página com uma tentativa ativa produz encerramento por abandono; não há troca silenciosa de contexto.
+Ao iniciar, configuração, chart, regras, dispositivo, calibração e apresentação são copiados para um `SessionSnapshot`. Controles de preparação deixam de estar disponíveis até encerrar ou abortar a tentativa. Sair da página com uma tentativa ativa produz encerramento por abandono; não há troca silenciosa de contexto.
 
 Prática e avaliação usam o mesmo julgamento. Na avaliação, qualquer pausa/interrupção preserva o resultado, mas inclui `attempt-interrupted` na inelegibilidade para progressão. Reiniciar cria outra tentativa completa e identificada.
 

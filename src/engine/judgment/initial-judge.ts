@@ -70,7 +70,7 @@ export class InitialJudge {
   private suspended = false;
 
   constructor(snapshot: SessionSnapshot) {
-    readChoice(snapshot.schemaVersion, [1], 'snapshot.schemaVersion');
+    readChoice(snapshot.schemaVersion, [1, 2], 'snapshot.schemaVersion');
     requireSameData(snapshot.rules, FRETSENSE_V1_RULE_PROFILE, 'snapshot.rules');
     this.snapshot = createSessionSnapshot(snapshot, { id: snapshot.id, createdAtIso: snapshot.createdAtIso }, snapshot.chart);
     this.notes = this.snapshot.chart.notes.map((note) => {

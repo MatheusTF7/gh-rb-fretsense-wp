@@ -11,7 +11,7 @@ import type {
 } from '@/engine/domain';
 import {
   immutableCopy, readArray, readBoolean, readChoice, readInteger, readIsoDate, readNumber,
-  readRecord, readReference, readString, requireCondition, requireSameData,
+  readRecord, readReference, readString, requireCondition, requireSameData, sameReference,
 } from '@/engine/domain';
 import { createSessionSnapshot } from '@/engine/session';
 
@@ -54,7 +54,7 @@ export interface StoredSessionRecord {
   readonly savedAtIso: string;
   readonly snapshot: SessionSnapshot;
   readonly result: SessionResult;
-  /** Perfis ainda não implementados são registrados como ausentes, nunca inferidos. */
+  /** Apresentação existe em snapshots v2; edição e registros v1 permanecem ausentes. */
   readonly presentation: VersionedReference | null;
   readonly gameEdition: VersionedReference | null;
   readonly retainedEvents: RetainedSessionEvents;
@@ -161,7 +161,7 @@ export function createStoredSessionRecord(
     savedAtIso: readIsoDate(savedAtIso, 'session.savedAtIso'),
     snapshot: immutableCopy(snapshot),
     result: immutableCopy(result),
-    presentation: null,
+    presentation: snapshot.presentation?.reference ?? null,
     gameEdition: null,
     retainedEvents,
   });
@@ -194,7 +194,7 @@ export function parseStoredSessionRecord(value: unknown): StoredSessionRecord {
   const savedAtIso = readIsoDate(record.savedAtIso, 'storedSession.savedAtIso');
   const snapshot = readRecord(record.snapshot, 'storedSession.snapshot');
   const result = readRecord(record.result, 'storedSession.result');
-  readChoice(snapshot.schemaVersion, [1], 'storedSession.snapshot.schemaVersion');
+  const snapshotVersion = readChoice(snapshot.schemaVersion, [1, 2], 'storedSession.snapshot.schemaVersion');
   readChoice(result.schemaVersion, [1], 'storedSession.result.schemaVersion');
   requireCondition(snapshot.id === id && result.sessionId === id, 'storedSession.id', 'Stored session IDs do not match.');
   const createdAtIso = readIsoDate(snapshot.createdAtIso, 'storedSession.snapshot.createdAtIso');
@@ -267,6 +267,11 @@ export function parseStoredSessionRecord(value: unknown): StoredSessionRecord {
   const gameEdition = record.gameEdition === null ? null
     : immutableCopy(readReference(record.gameEdition, 'storedSession.gameEdition'));
   const parsedResult = immutableCopy({ ...result, endedAtIso }) as unknown as SessionResult;
+  requireCondition(snapshotVersion !== 1 || presentation === null,
+    'storedSession.presentation', 'Session snapshot v1 cannot declare a presentation.');
+  requireCondition(snapshotVersion === 1 || (parsedSnapshot.presentation !== null && presentation !== null
+    && sameReference(parsedSnapshot.presentation.reference, presentation)),
+    'storedSession.presentation', 'Stored presentation differs from the frozen snapshot.');
   const parsedRetainedEvents = immutableCopy({
     status,
     reason: retained.reason as RetainedSessionEvents['reason'],

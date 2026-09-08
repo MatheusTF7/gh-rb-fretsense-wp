@@ -17,6 +17,10 @@ const quasar = useQuasar();
 const { locale, t } = useI18n({ useScope: 'global' });
 
 watch(() => [ui.locale, ui.theme, ui.reducedMotion], () => ui.persistInterface());
+watch(() => [
+  ui.highway.scrollSpeed, ui.highway.noteScale, ui.highway.perspectiveIntensity,
+  ui.highway.gridContrast, ui.highway.effects, ui.highway.highContrast,
+], () => ui.persistHighway());
 
 watch(
   () => ui.locale,
