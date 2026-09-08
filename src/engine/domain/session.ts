@@ -1,4 +1,4 @@
-import type { SessionMetrics, TrainingDiagnostic } from './analysis';
+import type { SessionAnalysisReport, SessionMetrics, TrainingDiagnostic } from './analysis';
 import type { DrillConfig } from './drill';
 import type { CalibrationProfile, DeviceProfile } from './input';
 import type { Chart, Milliseconds } from './music';
@@ -73,6 +73,7 @@ export interface SessionResult {
   readonly activeDurationMs: Milliseconds;
   readonly interruptions: readonly SessionInterruption[];
   readonly metrics: SessionMetrics;
+  readonly analysis: SessionAnalysisReport | null;
   readonly diagnostics: readonly TrainingDiagnostic[];
   readonly availability: {
     readonly inputs: RecordAvailability;

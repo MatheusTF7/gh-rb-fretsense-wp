@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–10 revisadas estaticamente, sem confirmação em execução. Etapas 11–20 pendentes.
+**Status:** etapas 01–11 revisadas estaticamente, sem confirmação em execução. Etapas 12–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. Ainda precisam ser implementados catálogo completo, relatórios detalhados e persistência de sessões. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. As etapas 09 e 10 entregaram o [catálogo procedural](./procedural-catalog.md) e a [prática/avaliação configuráveis](./practice-and-assessment.md); a etapa 11 acrescentou a [análise detalhada](./detailed-analysis.md). Persistência, histórico e adaptação continuam nas etapas seguintes. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -476,21 +476,32 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Definir métricas com numerador, denominador, unidade e política para dados ausentes.
-- [ ] Calcular precisão de notas como notas acertadas / notas esperadas elegíveis, contando um acorde como uma nota; apresentar análise de frets separadamente.
-- [ ] Calcular média com sinal, erro absoluto e dispersão do timing apenas sobre eventos elegíveis, sempre com quantidade de amostras.
-- [ ] Calcular precisão por fret/transição, erros de acordes, duração sustentada e cumprimento da direção de strum.
-- [ ] Implementar alinhamento temporal para análise posterior, limitado por trecho e distância temporal para evitar associações sem relação musical.
-- [ ] Classificar omissões, entradas extras, substituições e inversões com base no alinhamento e nos eventos originais.
-- [ ] Evitar classificar uma formação de acorde como sequência invertida ou uma mesma falha como várias ocorrências independentes.
-- [ ] Separar fatos observados de hipóteses: mostrar evidência e quantidade de ocorrências para um padrão sugerido.
-- [ ] Detectar tendência de antecipação/atraso e diferenças entre subida/descida apenas quando houver dados suficientes.
-- [ ] Preservar julgamentos e combo originais; diagnóstico posterior não reescreve a execução já apresentada.
-- [ ] Executar análise ao terminar o bloco/tentativa e impor limites de dados e custo. Caso necessário, usar Worker com mensagens versionadas, cancelamento e descarte de resultados de sessões antigas.
+- [x] Definir métricas com numerador, denominador, unidade e política para dados ausentes.
+- [x] Calcular precisão de notas como notas acertadas / notas esperadas elegíveis, contando um acorde como uma nota; apresentar análise de frets separadamente.
+- [x] Calcular média com sinal, erro absoluto e dispersão do timing apenas sobre eventos elegíveis, sempre com quantidade de amostras.
+- [x] Calcular precisão por fret/transição, erros de acordes, duração sustentada e cumprimento da direção de strum.
+- [x] Implementar alinhamento temporal para análise posterior, limitado por trecho e distância temporal para evitar associações sem relação musical.
+- [x] Classificar omissões, entradas extras, substituições e inversões com base no alinhamento e nos eventos originais.
+- [x] Evitar classificar uma formação de acorde como sequência invertida ou uma mesma falha como várias ocorrências independentes.
+- [x] Separar fatos observados de hipóteses: mostrar evidência e quantidade de ocorrências para um padrão sugerido.
+- [x] Detectar tendência de antecipação/atraso e diferenças entre subida/descida apenas quando houver dados suficientes.
+- [x] Preservar julgamentos e combo originais; diagnóstico posterior não reescreve a execução já apresentada.
+- [x] Executar análise ao terminar o bloco/tentativa e impor limites de dados e custo. Caso necessário, usar Worker com mensagens versionadas, cancelamento e descarte de resultados de sessões antigas.
 
 **Entregáveis:** módulos de métricas e diagnóstico, formato de relatório e seção detalhada do resultado. Esta etapa conclui M2.
 
 **Critério de conclusão:** todo diagnóstico pode ser relacionado a eventos registrados; dados insuficientes ou capacidades ausentes aparecem como indisponíveis, sem valores artificiais.
+
+**Registro da etapa — 2026-09-08:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** métricas com unidades e disponibilidade explícitas; alinhamento posterior por trecho; classificação rastreável de omissões, extras, substituições, inversões, acordes, sustains e direção; hipóteses de timing com amostras mínimas; relatório por técnica/trecho integrado ao resultado.
+- **Arquivos:** `src/engine/analysis`, contratos em `src/engine/domain/analysis.ts` e `session.ts`, integração em `src/engine/session`, `src/components/reports/SessionAnalysisReport.vue`, `src/pages/ResultsPage.vue`, mensagens em `src/i18n` e [documentação da análise](./detailed-analysis.md).
+- **Decisões relevantes:** `fretsense-analysis@1.0.0`; distância de alinhamento de duas janelas de acerto; limite de 2.100.000 células e 512 recortes de trecho; até 64 evidências e itens por evidência; tendência geral com 8 amostras e 15 ms; comparação subida/descida com 4 amostras por grupo e 15 ms. A formação de acorde sem ataque julgado não é tratada como nota independente, e inversões de notas simples substituem as duas classificações de substituição correspondentes.
+- **Revisão realizada:** somente análise estática manual de contratos, imports, tipos, limites, alinhamento, agregações, integração da sessão, interface e traduções; nenhum teste, lint, formatação automática, build, typecheck, servidor ou navegador foi executado.
+- **Limitações e pendências:** a análise atual é síncrona e limitada; ao exceder o custo, usa as associações originais e marca o relatório como parcial. Persistência e consulta de sessões continuam na etapa 12; recomendações corretivas continuam na etapa 13; confirmação visual e comportamental em execução depende do desenvolvedor.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida.
+- **Próxima etapa liberada:** etapa 12, persistência e histórico de sessões.
 
 ### Etapa 12 — Persistir sessões e histórico local
 

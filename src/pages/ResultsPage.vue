@@ -42,6 +42,8 @@
           {{ t('play.interruptions', { count: record.result.interruptions.length }) }}
         </p>
         <ChartPreview :chart="record.snapshot.chart" />
+        <SessionAnalysisReport v-if="record.result.analysis" :report="record.result.analysis" />
+        <FeedbackBanner v-else tone="error" :message="t('results.analysis.notPerformed')" />
         <div class="result-detail__actions">
           <q-btn unelevated color="primary" no-caps icon="tune" :to="{ name: 'play' }" :label="t('results.backToConfiguration')" />
           <q-btn outline no-caps :to="{ name: 'train' }" :label="t('common.browseCatalog')" />
@@ -67,6 +69,7 @@ import PageHeading from '@/components/PageHeading.vue';
 import PageState from '@/components/PageState.vue';
 import FeedbackBanner from '@/components/FeedbackBanner.vue';
 import ChartPreview from '@/components/training/ChartPreview.vue';
+import SessionAnalysisReport from '@/components/reports/SessionAnalysisReport.vue';
 
 const { t } = useI18n();
 const route = useRoute();

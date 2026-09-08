@@ -27,7 +27,7 @@ interface ActiveSustain {
 }
 
 function ratio(numerator: number, denominator: number, reason: 'no-samples' | 'not-applicable' | 'unsupported-capability'): RatioMetric {
-  return denominator > 0 ? { status: 'available', numerator, denominator, value: numerator / denominator }
+  return denominator > 0 ? { status: 'available', unit: 'ratio', numerator, denominator, value: numerator / denominator }
     : { status: 'unavailable', reason };
 }
 
@@ -236,6 +236,7 @@ export class InitialJudge {
         noteAccuracy: ratio(this.hitNotes, this.cursor, 'no-samples'),
         timing: this.hitNotes === 0 ? { status: 'unavailable', reason: 'no-samples' } : {
           status: 'available',
+          unit: 'milliseconds',
           sampleCount: this.hitNotes,
           meanErrorMs: this.meanErrorMs,
           meanAbsoluteErrorMs: this.meanAbsoluteErrorMs,

@@ -30,20 +30,22 @@ function readRatio(value: unknown, path: string): RatioMetric {
   const denominator = readInteger(metric.denominator, `${path}.denominator`, 1, limits.maximumJudgmentEvents);
   const numerator = readInteger(metric.numerator, `${path}.numerator`, 0, denominator);
   const ratio = readNumber(metric.value, `${path}.value`, 0, 1);
+  readChoice(metric.unit, ['ratio'], `${path}.unit`);
   requireCondition(Math.abs(ratio - numerator / denominator) <= Number.EPSILON * 8, path, 'Ratio does not match its counts.');
-  return { status: 'available', numerator, denominator, value: ratio };
+  return { status: 'available', unit: 'ratio', numerator, denominator, value: ratio };
 }
 
 function readTiming(value: unknown, hitNotes: number, snapshot: SessionSnapshot): TimingMetrics {
   const metric = readRecord(value, 'evaluation.metrics.timing');
   if (metric.status !== 'available') return unavailable(metric, 'evaluation.metrics.timing');
   const sampleCount = readInteger(metric.sampleCount, 'timing.sampleCount', 1, limits.maximumNotes);
+  readChoice(metric.unit, ['milliseconds'], 'timing.unit');
   requireCondition(sampleCount === hitNotes, 'timing.sampleCount', 'Timing samples must match hit notes.');
   const maximumError = Math.max(snapshot.rules.hitWindow.earlyMs, snapshot.rules.hitWindow.lateMs);
   const meanErrorMs = readNumber(metric.meanErrorMs, 'timing.meanErrorMs', -snapshot.rules.hitWindow.earlyMs, snapshot.rules.hitWindow.lateMs);
   const meanAbsoluteErrorMs = readNumber(metric.meanAbsoluteErrorMs, 'timing.meanAbsoluteErrorMs', 0, maximumError);
   requireCondition(meanAbsoluteErrorMs + 1e-9 >= Math.abs(meanErrorMs), 'timing.meanAbsoluteErrorMs', 'Absolute error cannot be less than absolute mean error.');
-  return { status: 'available', sampleCount, meanErrorMs, meanAbsoluteErrorMs,
+  return { status: 'available', unit: 'milliseconds', sampleCount, meanErrorMs, meanAbsoluteErrorMs,
     populationStdDevMs: readNumber(metric.populationStdDevMs, 'timing.populationStdDevMs', 0, maximumError) };
 }
 

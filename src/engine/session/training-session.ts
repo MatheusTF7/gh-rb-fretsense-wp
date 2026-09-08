@@ -8,6 +8,7 @@ import { EngineError, readChoice, readInteger, readIsoDate, readNumber, readStri
 import { getChartEndTime, ticksToMilliseconds, type MonotonicClock } from '../timing/musical-time';
 import { judgmentTime } from '../timing/calibrated-time';
 import { InitialJudge } from '../judgment/initial-judge';
+import { analyzeSession } from '../analysis';
 import { BoundedBuffer } from './bounded-buffer';
 import { createUnjudgedMetrics, parseSessionEvaluation, type SessionEvaluation } from './evaluation';
 import {
@@ -408,14 +409,22 @@ export class TrainingSession {
       || (goals.requireArticulation && metrics.articulationCompliance.status !== 'available')
       || (goals.requireStrumDirection && (metrics.strumDirectionCompliance.status !== 'available' || snapshot.device.capabilities.strum !== 'directional'))
       || (goals.requireFullSustains && metrics.sustainCompletion.status !== 'available')) reasons.push('required-data-unavailable');
+    const inputRecords = this.inputOverflow ? 'partial' : this.recordingStarted ? 'complete' : 'not-recorded';
+    const effectiveJudgmentRecords = judgmentRecords === 'complete' && hasPendingEvaluation ? 'partial' : judgmentRecords;
+    const analysis = this.judge && evaluation
+      ? analyzeSession(snapshot, this.inputs.snapshot(), this.judge.getEvents(), {
+        inputs: inputRecords,
+        judgments: effectiveJudgmentRecords,
+      })
+      : null;
     const result: SessionResult = immutableCopy({
       schemaVersion: 1, sessionId: snapshot.id, ending,
-      endedAtIso: readIsoDate(this.services.utcNow(), 'session.endedAtIso'),
-      activeDurationMs: this.activeTimeMs, interruptions: this.interruptions, metrics, diagnostics: [],
+      endedAtIso: readIsoDate(this.services.utcNow(), 'session.endedAtIso'), activeDurationMs: this.activeTimeMs,
+      interruptions: this.interruptions, metrics, analysis, diagnostics: analysis?.diagnostics ?? [],
       availability: {
-        inputs: this.inputOverflow ? 'partial' : this.recordingStarted ? 'complete' : 'not-recorded',
-        judgments: judgmentRecords === 'complete' && hasPendingEvaluation ? 'partial' : judgmentRecords,
-        analysis: 'not-performed',
+        inputs: inputRecords,
+        judgments: effectiveJudgmentRecords,
+        analysis: analysis?.status ?? 'not-performed',
       },
       progression: reasons.length === 0 ? { eligible: true } : { eligible: false, reasons },
     });
