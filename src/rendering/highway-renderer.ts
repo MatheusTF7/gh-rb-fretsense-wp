@@ -21,6 +21,7 @@ interface ScheduledMarker { readonly timeMs: number; readonly kind: 'subdivision
 type NoteStatus = 'hit' | 'miss';
 type SustainStatus = Extract<JudgmentEvent, { kind: 'sustain' }>['outcome'];
 type EffectKind = HighwayFeedbackKind;
+interface ResolvedNoteVisual { readonly status: NoteStatus; readonly atMs: number }
 interface VisualEffect { active: boolean; kind: EffectKind; noteId: string | null; startedAtMs: number; endsAtMs: number }
 interface CachedStyles {
   background: string; lane: string; line: string; hitLine: string; text: string; muted: string; success: string; error: string;
@@ -48,6 +49,7 @@ function lowerBound<T>(items: readonly T[], value: number, read: (item: T) => nu
 }
 const readNoteTime = (note: ScheduledNote) => note.timeMs;
 const readMarkerTime = (marker: ScheduledMarker) => marker.timeMs;
+const easeOutCubic = (value: number) => 1 - (1 - value) ** 3;
 
 /** Backend Canvas 2D sem estado musical: converte snapshots congelados em pixels. */
 export class CanvasHighwayRenderer implements HighwayRendererBackend {
@@ -61,7 +63,7 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
   private maximumSustainMs = 0;
   private markers: readonly ScheduledMarker[] = [];
   private readonly notesById = new Map<string, ScheduledNote>();
-  private readonly resolved = new Map<string, NoteStatus>();
+  private readonly resolved = new Map<string, ResolvedNoteVisual>();
   private readonly sustains = new Map<string, SustainStatus>();
   private readonly brokenDash = [7, 7];
   private readonly notEvaluatedDash = [2, 6];
@@ -135,10 +137,10 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
       let effect: EffectKind | null = null;
       let noteId: string | null = 'noteId' in event ? event.noteId : null;
       if (event.kind === 'note-hit') {
-        this.resolved.set(event.noteId, 'hit');
+        this.resolved.set(event.noteId, { status: 'hit', atMs: visualTimeMs });
         effect = Math.abs(event.timingErrorMs) <= 15 ? 'hit' : event.timingErrorMs < 0 ? 'early' : 'late';
       } else if (event.kind === 'note-miss') {
-        this.resolved.set(event.noteId, 'miss'); effect = 'miss';
+        this.resolved.set(event.noteId, { status: 'miss', atMs: visualTimeMs }); effect = 'miss';
       } else if (event.kind === 'extra-strum') {
         effect = 'extra'; noteId = null;
       } else {
@@ -165,9 +167,10 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
     if (this.backgroundCanvas) context.drawImage(this.backgroundCanvas, 0, 0, width, height);
     else { context.fillStyle = this.styles.background; context.fillRect(0, 0, width, height); }
     const timeMs = visualTime(frame.activeTimeMs, frame);
+    this.drawSurface(context, timeMs);
     this.drawMarkers(context, timeMs);
+    this.drawHitLineAndTargets(context, frame.activeFrets);
     this.drawNotes(context, timeMs);
-    this.drawHitLineAndTargets(context, frame.activeFrets, timeMs);
     this.drawEffects(context, timeMs);
   }
 
@@ -290,20 +293,52 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
     this.backgroundDirty = false;
   }
 
+  private drawSurface(context: CanvasRenderingContext2D, timeMs: number): void {
+    const presentation = this.presentation;
+    if (!presentation || presentation.preferences.motion === 'reduced') return;
+    const { repeatDistance, contrast } = presentation.profile.surface;
+    const periodMs = repeatDistance * 1000 / presentation.preferences.scrollSpeed;
+    const first = Math.floor((timeMs + this.timeAtY(this.viewport.height)) / periodMs);
+    const last = Math.ceil((timeMs + this.timeAtY(this.topY())) / periodMs);
+    context.save();
+    this.highwayPath(context, this.topY(), this.viewport.height);
+    context.clip();
+    context.strokeStyle = this.styles.muted;
+    // As incrustações têm posições fixas no braço; só o tempo visual desloca a superfície.
+    // Índices absolutos evitam reiniciar a textura em beats, pausas ou mudanças de frame rate.
+    for (let row = last; row >= first; row -= 1) {
+      const nearY = this.projectTime((row + 0.12) * periodMs - timeMs);
+      const middleY = this.projectTime((row + 0.5) * periodMs - timeMs);
+      const farY = this.projectTime((row + 0.88) * periodMs - timeMs);
+      context.globalAlpha = contrast * (presentation.preferences.highContrast ? 0.5 : 1);
+      context.lineWidth = Math.max(0.5, this.trackDepthScale(middleY));
+      for (let lane = 0; lane < HIGHWAY_FRET_ORDER.length; lane += 1) {
+        context.beginPath();
+        context.moveTo(this.laneCenter(nearY, lane), nearY);
+        context.lineTo(this.laneCenter(middleY, lane) - this.laneWidth(middleY) * 0.28, middleY);
+        context.lineTo(this.laneCenter(farY, lane), farY);
+        context.lineTo(this.laneCenter(middleY, lane) + this.laneWidth(middleY) * 0.28, middleY);
+        context.closePath();
+        context.stroke();
+      }
+    }
+    context.restore();
+  }
+
   private drawMarkers(context: CanvasRenderingContext2D, timeMs: number): void {
     const presentation = this.presentation;
     if (!presentation) return;
-    const speed = presentation.preferences.scrollSpeed / 1000;
-    const first = lowerBound(this.markers, timeMs - 900, readMarkerTime);
+    const first = lowerBound(this.markers, timeMs + this.timeAtY(this.viewport.height), readMarkerTime);
     context.save();
     for (let index = first; index < this.markers.length; index += 1) {
       const marker = this.markers[index]; if (!marker) continue;
-      const y = this.hitY() - (marker.timeMs - timeMs) * speed;
-      if (y < this.topY() - 8) break; if (y > this.viewport.height + 8) continue;
-      context.globalAlpha = presentation.preferences.gridContrast * (marker.kind === 'measure' ? 0.95 : marker.kind === 'beat' ? 0.62 : 0.32);
+      const y = this.projectTime(marker.timeMs - timeMs);
+      if (y < this.topY()) break; if (y > this.viewport.height) continue;
+      context.globalAlpha = this.horizonAlpha(y) * presentation.preferences.gridContrast
+        * (marker.kind === 'measure' ? 0.95 : marker.kind === 'beat' ? 0.62 : 0.32);
       context.strokeStyle = marker.kind === 'measure' ? this.styles.hitLine : this.styles.line;
-      context.lineWidth = marker.kind === 'measure' ? presentation.profile.markers.measureWidth
-        : marker.kind === 'beat' ? presentation.profile.markers.beatWidth : 1;
+      context.lineWidth = (marker.kind === 'measure' ? presentation.profile.markers.measureWidth
+        : marker.kind === 'beat' ? presentation.profile.markers.beatWidth : 1) * this.trackDepthScale(y);
       context.beginPath(); context.moveTo(this.highwayLeft(y), y);
       context.lineTo(this.highwayLeft(y) + this.highwayWidth(y), y); context.stroke();
     }
@@ -313,16 +348,21 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
   private drawNotes(context: CanvasRenderingContext2D, timeMs: number): void {
     const presentation = this.presentation;
     if (!presentation) return;
-    const pixelsPerMs = presentation.preferences.scrollSpeed / 1000;
-    const pastLimit = timeMs - (this.viewport.height - this.hitY() + 80) / pixelsPerMs;
+    const pastLimit = timeMs + this.timeAtY(this.viewport.height + 80);
     const first = lowerBound(this.scheduled, pastLimit - this.maximumSustainMs, readNoteTime);
-    const futureMs = (this.hitY() - this.topY() + 80) / pixelsPerMs;
-    for (let index = first; index < this.scheduled.length; index += 1) {
-      const note = this.scheduled[index]; if (!note || note.timeMs > timeMs + futureMs) break;
+    const futureMs = this.timeAtY(this.topY());
+    const last = lowerBound(this.scheduled, timeMs + futureMs, readNoteTime);
+    // Desenha do horizonte para a câmera para preservar a sobreposição das notas.
+    for (let index = last - 1; index >= first; index -= 1) {
+      const note = this.scheduled[index]; if (!note) continue;
       if (note.endTimeMs < pastLimit) continue;
-      const y = this.hitY() - (note.timeMs - timeMs) * pixelsPerMs;
-      const endY = this.hitY() - (note.endTimeMs - timeMs) * pixelsPerMs;
-      const status = this.resolved.get(note.id); const sustainStatus = this.sustains.get(note.id);
+      const y = this.projectTime(note.timeMs - timeMs);
+      const endY = this.projectTime(note.endTimeMs - timeMs);
+      const resolution = this.resolved.get(note.id);
+      const status = resolution?.status;
+      const headY = status === 'hit' ? this.hitY() : y;
+      const sustainStatus = this.sustains.get(note.id);
+      const noteAlpha = (resolution ? this.resolvedNoteAlpha(resolution, timeMs) : 1) * this.horizonAlpha(headY);
       let firstLane = -1; let lastLane = -1; let fretCount = 0;
       for (let laneIndex = 0; laneIndex < HIGHWAY_FRET_ORDER.length; laneIndex += 1) {
         const fret = HIGHWAY_FRET_ORDER[laneIndex];
@@ -330,19 +370,22 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
         if (firstLane < 0) firstLane = laneIndex;
         lastLane = laneIndex; fretCount += 1;
       }
-      if (fretCount > 1) this.chordConnector(context, y, firstLane, lastLane, status);
+      const headVisible = headY >= this.topY() && headY <= this.viewport.height + this.noteRadius(headY);
+      if (fretCount > 1 && noteAlpha > 0 && headVisible) this.chordConnector(context, headY, firstLane, lastLane, noteAlpha);
       for (let laneIndex = 0; laneIndex < HIGHWAY_FRET_ORDER.length; laneIndex += 1) {
         const fret = HIGHWAY_FRET_ORDER[laneIndex]; if (!fret || !(note.frets & FRET_BITS[fret])) continue;
         if (note.endTimeMs > note.timeMs) this.tail(context, laneIndex, y, endY, fret, status, sustainStatus);
-        this.note(context, laneIndex, y, fret, note.articulation, note.expectedStrumDirection, status);
+        if (noteAlpha > 0 && headVisible) this.note(context, laneIndex, headY, fret, note.articulation,
+          note.expectedStrumDirection, status, noteAlpha);
       }
     }
   }
 
-  private drawHitLineAndTargets(context: CanvasRenderingContext2D, activeFrets: FretMask, timeMs: number): void {
+  private drawHitLineAndTargets(context: CanvasRenderingContext2D, activeFrets: FretMask): void {
     const presentation = this.presentation; if (!presentation) return;
-    const y = this.hitY();
-    const receptorY = this.receptorY();
+    const receptorY = this.hitY();
+    // A barra é decorativa; o tempo zero e os efeitos coincidem com os receptores.
+    const y = receptorY - this.noteRadius(receptorY) * 0.72;
     context.save();
     context.lineCap = 'round';
     context.strokeStyle = '#05070b';
@@ -356,9 +399,8 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
     for (let index = 0; index < HIGHWAY_FRET_ORDER.length; index += 1) {
       const fret = HIGHWAY_FRET_ORDER[index]; if (!fret) continue;
       const active = (activeFrets & FRET_BITS[fret]) !== 0; const x = this.laneCenter(receptorY, index);
-      const radius = Math.min(27, this.laneWidth(receptorY) * 0.31) * presentation.preferences.noteScale;
-      const pulse = active && presentation.preferences.motion === 'full' && presentation.preferences.effects === 'full'
-        ? 2 + Math.sin(timeMs / 45) : 0;
+      const radius = this.noteRadius(receptorY);
+      const pulse = active ? 2 : 0;
       context.shadowColor = this.fretColor(fret);
       context.shadowBlur = active ? 18 : 9;
       context.beginPath(); context.ellipse(x, receptorY, radius + 5 + pulse, (radius + pulse) * 0.7, 0, 0, Math.PI * 2);
@@ -377,68 +419,113 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
     context.restore();
   }
 
-  private chordConnector(context: CanvasRenderingContext2D, y: number, first: number, last: number, status: NoteStatus | undefined): void {
+  private chordConnector(context: CanvasRenderingContext2D, y: number, first: number, last: number, alpha: number): void {
     const presentation = this.presentation; if (!presentation) return;
-    context.save(); context.globalAlpha = status ? 0.22 : 0.78; context.lineCap = 'round';
+    context.save(); context.globalAlpha = 0.78 * alpha; context.lineCap = 'round';
     context.strokeStyle = '#05070b';
-    context.lineWidth = (presentation.profile.notes.chordConnectorWidth + 5) * this.depthScale(y);
+    context.lineWidth = (presentation.profile.notes.chordConnectorWidth + 5) * this.noteDepthScale(y);
     context.beginPath(); context.moveTo(this.laneCenter(y, first), y); context.lineTo(this.laneCenter(y, last), y); context.stroke();
     context.strokeStyle = this.styles.hitLine;
-    context.lineWidth = presentation.profile.notes.chordConnectorWidth * this.depthScale(y);
+    context.lineWidth = presentation.profile.notes.chordConnectorWidth * this.noteDepthScale(y);
     context.stroke(); context.restore();
   }
 
   private tail(context: CanvasRenderingContext2D, lane: number, headY: number, endY: number, fret: Fret,
     noteStatus: NoteStatus | undefined, sustainStatus: SustainStatus | undefined): void {
     const presentation = this.presentation; if (!presentation) return;
-    const active = noteStatus === 'hit' && sustainStatus === undefined;
-    context.save(); context.globalAlpha = noteStatus === 'miss' || sustainStatus === 'cancelled' ? 0.18
-      : sustainStatus === 'not-evaluated' ? 0.42 : sustainStatus === 'completed' ? 0.34 : active ? 1 : 0.72;
+    const held = noteStatus === 'hit';
+    const active = held && sustainStatus === undefined;
+    // Recorta antes de projetar: endpoints fora da pista alterariam a inclinação da cauda.
+    const startY = Math.min(this.viewport.height, held ? this.hitY() : headY);
+    const visibleEndY = Math.max(this.topY(), endY);
+    if (startY <= visibleEndY) return;
+    const alpha = noteStatus === 'miss' || sustainStatus === 'cancelled' ? 0.18
+      : sustainStatus === 'not-evaluated' ? 0.4 : sustainStatus === 'completed' ? 0.3 : active ? 0.94 : 0.72;
     const color = sustainStatus === 'broken' ? this.styles.error
       : sustainStatus === 'not-evaluated' || sustainStatus === 'cancelled' ? this.styles.muted : this.fretColor(fret);
-    const width = presentation.profile.sustains.width * presentation.preferences.noteScale
-      * this.depthScale(headY) * (active ? 1.28 : 1);
-    context.lineCap = sustainStatus === 'completed' ? 'butt' : 'round';
-    if (sustainStatus === 'broken') context.setLineDash(this.brokenDash);
-    else if (sustainStatus === 'not-evaluated') context.setLineDash(this.notEvaluatedDash);
-    context.strokeStyle = '#05070b'; context.lineWidth = width + 6;
-    context.beginPath(); context.moveTo(this.laneCenter(headY, lane), headY); context.lineTo(this.laneCenter(endY, lane), endY); context.stroke();
-    context.strokeStyle = color; context.lineWidth = width;
-    context.shadowColor = color; context.shadowBlur = active ? 10 : 4;
-    context.beginPath(); context.moveTo(this.laneCenter(headY, lane), headY); context.lineTo(this.laneCenter(endY, lane), endY); context.stroke(); context.restore();
+    const baseWidth = Math.min(presentation.profile.sustains.width, this.laneWidth(this.hitY()) * 0.2)
+      * presentation.preferences.noteScale * (active ? 1.18 : 1);
+    const startScale = this.trackDepthScale(startY);
+    const endScale = this.trackDepthScale(visibleEndY);
+    const startWidth = baseWidth * startScale;
+    const endWidth = baseWidth * endScale;
+    context.save();
+    context.globalAlpha = alpha;
+    context.shadowColor = color;
+    context.shadowBlur = active ? 12 : 5;
+    this.sustainPath(context, lane, startY, visibleEndY, startWidth + 5 * startScale, endWidth + 5 * endScale);
+    context.fillStyle = '#05070b';
+    context.fill();
+    this.sustainPath(context, lane, startY, visibleEndY, startWidth, endWidth);
+    context.fillStyle = color;
+    context.fill();
+    context.shadowBlur = 0;
+    context.globalAlpha = alpha * 0.44;
+    context.strokeStyle = '#ffffff';
+    context.lineWidth = Math.max(1, Math.min(2, startWidth * 0.18));
+    context.lineCap = 'round';
+    context.beginPath();
+    context.moveTo(this.laneCenter(startY, lane), startY);
+    context.lineTo(this.laneCenter(visibleEndY, lane), visibleEndY);
+    context.stroke();
+    if (sustainStatus === 'broken' || sustainStatus === 'not-evaluated') {
+      context.globalAlpha = Math.min(1, alpha + 0.2);
+      context.strokeStyle = sustainStatus === 'broken' ? this.styles.error : this.styles.muted;
+      context.lineWidth = Math.max(2, startWidth * 0.38);
+      context.setLineDash(sustainStatus === 'broken' ? this.brokenDash : this.notEvaluatedDash);
+      context.beginPath();
+      context.moveTo(this.laneCenter(startY, lane), startY);
+      context.lineTo(this.laneCenter(visibleEndY, lane), visibleEndY);
+      context.stroke();
+    }
+    context.restore();
   }
 
   private note(context: CanvasRenderingContext2D, lane: number, y: number, fret: Fret, articulation: Articulation,
-    direction: StrumDirection | null, status: NoteStatus | undefined): void {
+    direction: StrumDirection | null, status: NoteStatus | undefined, alpha: number): void {
     const presentation = this.presentation; if (!presentation) return;
-    const x = this.laneCenter(y, lane); const radius = Math.min(presentation.profile.notes.baseRadius, this.laneWidth(y) * 0.27)
-      * presentation.preferences.noteScale * this.depthScale(y);
+    const x = this.laneCenter(y, lane);
+    const radius = this.noteRadius(y);
+    const depthScale = this.noteDepthScale(y);
     const shape = articulation === 'tap' ? presentation.profile.notes.tapShape
       : articulation === 'hopo' ? presentation.profile.notes.hopoShape : presentation.profile.notes.strumShape;
-    context.save(); context.globalAlpha = status ? 0.26 : 1;
+    context.save();
+    context.globalAlpha = alpha;
     context.shadowColor = status === 'miss' ? this.styles.error : this.fretColor(fret);
-    context.shadowBlur = status ? 0 : presentation.preferences.highContrast ? 15 : 9;
+    context.shadowBlur = status ? 0 : (presentation.preferences.highContrast ? 13 : 8) * depthScale;
     this.notePath(context, shape, x, y, radius);
     context.fillStyle = this.fretColor(fret); context.fill();
     context.shadowBlur = 0;
     context.strokeStyle = status === 'miss' ? this.styles.error : '#05070b';
-    context.lineWidth = status === 'miss' ? 4 : articulation === 'hopo' ? 3 : 3.5; context.stroke();
+    context.lineWidth = (status === 'miss' ? 4 : 3.5) * depthScale; context.stroke();
     this.notePath(context, shape, x, y, radius * 0.7);
-    context.globalAlpha = status ? 0.18 : 0.26;
-    context.strokeStyle = '#ffffff'; context.lineWidth = 1.5; context.stroke();
+    context.globalAlpha = alpha * 0.26;
+    context.strokeStyle = '#ffffff'; context.lineWidth = 1.5 * depthScale; context.stroke();
     context.beginPath();
     context.ellipse(x - radius * 0.2, y - radius * 0.2, radius * 0.27, radius * 0.1, -0.12, 0, Math.PI * 2);
-    context.globalAlpha = status ? 0.12 : 0.62;
+    context.globalAlpha = alpha * 0.62;
     context.fillStyle = '#ffffff'; context.fill();
+    if (articulation === 'hopo') {
+      // Tampa branca opaca: a identificação HOPO permanece com efeitos desativados.
+      context.globalAlpha = alpha;
+      context.shadowColor = '#ffffff';
+      context.shadowBlur = presentation.preferences.effects === 'off' ? 0
+        : (presentation.preferences.effects === 'full' ? 10 : 4) * depthScale;
+      context.beginPath();
+      context.ellipse(x, y - radius * 0.18, radius * 0.48, radius * 0.3, 0, 0, Math.PI * 2);
+      context.fillStyle = '#ffffff'; context.fill();
+      context.shadowBlur = 0;
+      context.strokeStyle = '#d8e4f2'; context.lineWidth = depthScale; context.stroke();
+    }
     if (presentation.preferences.highContrast) {
-      context.globalAlpha = status ? 0.3 : 1;
+      context.globalAlpha = alpha;
       context.fillStyle = status === 'miss' ? this.styles.text : '#05070b';
       const fontIndex = Math.round(Math.max(9, Math.min(13, radius * 0.7))) - 9;
       context.font = NOTE_FONTS[fontIndex] ?? NOTE_FONTS[0] ?? '700 9px Roboto, sans-serif';
       context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(fret, x, y);
     }
     if (direction) {
-      context.globalAlpha = status ? 0.3 : 0.92;
+      context.globalAlpha = alpha * 0.92;
       context.fillStyle = this.styles.text; context.font = '800 11px Roboto, sans-serif';
       context.textAlign = 'center'; context.textBaseline = 'middle';
       context.fillText(direction === 'down' ? '↓' : '↑', x, y - radius - 7);
@@ -482,16 +569,44 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
       if (!effect.active) continue; if (effect.endsAtMs <= timeMs) { effect.active = false; continue; }
       const progress = Math.max(0, Math.min(1, (timeMs - effect.startedAtMs) / (effect.endsAtMs - effect.startedAtMs)));
       const note = effect.noteId ? this.notesById.get(effect.noteId) : undefined;
-      const alpha = (1 - progress) * (presentation.preferences.effects === 'reduced' ? 0.55 : 0.9);
-      const color = effect.kind === 'miss' || effect.kind === 'extra' || effect.kind === 'sustain-broken' ? this.styles.error : this.styles.success;
+      const intensity = presentation.preferences.effects === 'reduced' ? 0.5 : 0.88;
+      const alpha = (1 - progress) ** 2 * intensity;
+      const radius = this.noteRadius(this.hitY());
+      const expansion = presentation.preferences.motion === 'full' ? easeOutCubic(progress) * radius * 0.2 : 0;
+      const isError = effect.kind === 'miss' || effect.kind === 'extra' || effect.kind === 'sustain-broken';
       for (let lane = 0; lane < HIGHWAY_FRET_ORDER.length; lane += 1) {
         const fret = HIGHWAY_FRET_ORDER[lane];
         if (note && (!fret || !(note.frets & FRET_BITS[fret]))) continue;
         if (!note && lane !== 2) continue;
-        const x = this.laneCenter(this.hitY(), lane); const movement = presentation.preferences.motion === 'reduced' ? 0 : progress * 18;
-        const y = this.hitY() + (effect.kind === 'early' ? -movement : effect.kind === 'late' ? movement : 0);
-        context.globalAlpha = alpha; context.strokeStyle = color; context.lineWidth = presentation.preferences.highContrast ? 5 : 3;
-        context.beginPath(); context.arc(x, y, 28 + (presentation.preferences.motion === 'full' ? progress * 18 : 0), 0, Math.PI * 2); context.stroke();
+        const color = isError ? this.styles.error : fret ? this.fretColor(fret) : this.styles.success;
+        const y = this.hitY();
+        const x = this.laneCenter(y, lane);
+        context.globalAlpha = alpha * 0.22;
+        context.fillStyle = color;
+        context.beginPath(); context.ellipse(x, y, radius * 1.2 + expansion, radius * 0.6 + expansion * 0.35, 0, 0, Math.PI * 2); context.fill();
+        context.globalAlpha = alpha;
+        context.strokeStyle = color;
+        context.lineWidth = presentation.preferences.highContrast ? 5 : 3;
+        context.shadowColor = color;
+        context.shadowBlur = presentation.preferences.effects === 'full' ? 14 : 7;
+        context.beginPath(); context.ellipse(x, y, radius + expansion, radius * 0.6 + expansion * 0.3, 0, 0, Math.PI * 2); context.stroke();
+        context.shadowBlur = 0;
+        if (!isError) {
+          context.globalAlpha = alpha * 0.85;
+          context.fillStyle = '#ffffff';
+          context.beginPath(); context.ellipse(x, y, radius * 0.62, radius * 0.3, 0, 0, Math.PI * 2); context.fill();
+        }
+        if (!isError && presentation.preferences.motion === 'full' && presentation.preferences.effects === 'full') {
+          const spark = radius * (0.35 + progress * 0.6);
+          context.globalAlpha = alpha * 0.72;
+          context.lineWidth = 2;
+          context.beginPath();
+          context.moveTo(x - radius * 0.38, y - radius * 0.17);
+          context.lineTo(x - spark, y - radius * (0.45 + progress * 0.4));
+          context.moveTo(x + radius * 0.38, y - radius * 0.17);
+          context.lineTo(x + spark, y - radius * (0.45 + progress * 0.4));
+          context.stroke();
+        }
         if (effect.kind === 'early' || effect.kind === 'late' || effect.kind === 'extra') {
           context.fillStyle = color; context.font = '800 17px Roboto, sans-serif'; context.textAlign = 'center'; context.textBaseline = 'middle';
           context.fillText(effect.kind === 'early' ? '▲' : effect.kind === 'late' ? '▼' : '×', x, y);
@@ -499,6 +614,31 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
       }
     }
     context.restore();
+  }
+
+  private resolvedNoteAlpha(resolution: ResolvedNoteVisual, timeMs: number): number {
+    const durationMs = resolution.status === 'hit' ? 130 : 300;
+    const progress = Math.max(0, Math.min(1, (timeMs - resolution.atMs) / durationMs));
+    return 1 - easeOutCubic(progress);
+  }
+
+  private sustainPath(context: CanvasRenderingContext2D, lane: number, startY: number, endY: number,
+    startWidth: number, endWidth: number): void {
+    const startX = this.laneCenter(startY, lane);
+    const endX = this.laneCenter(endY, lane);
+    context.beginPath();
+    context.moveTo(startX - startWidth / 2, startY);
+    context.lineTo(endX - endWidth / 2, endY);
+    context.lineTo(endX + endWidth / 2, endY);
+    context.lineTo(startX + startWidth / 2, startY);
+    context.closePath();
+  }
+
+  private noteRadius(y: number): number {
+    const presentation = this.presentation;
+    if (!presentation) return 0;
+    const nearRadius = Math.min(presentation.profile.notes.baseRadius, this.laneWidth(this.hitY()) * 0.34);
+    return nearRadius * presentation.preferences.noteScale * this.noteDepthScale(y);
   }
 
   private fretColor(fret: Fret): string {
@@ -515,17 +655,38 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
     context.closePath();
   }
   private topY(): number { return Math.max(10, this.viewport.height * (this.presentation?.profile.projection.safeMarginRatio ?? 0.035)); }
-  private hitY(): number { return this.viewport.height * (this.presentation?.profile.hitLine.positionRatio ?? 0.82); }
-  private receptorY(): number { return Math.min(this.viewport.height - 28, this.hitY() + Math.max(38, this.viewport.height * 0.07)); }
+  private hitY(): number { return this.viewport.height * (this.presentation?.profile.hitLine.positionRatio ?? 0.86); }
   private perspectiveAmount(): number {
     return this.presentation?.profile.projection.mode === 'perspective' ? this.presentation.preferences.perspectiveIntensity : 0;
   }
+  private projectionSlope(): number {
+    return (1 - this.trackDepthScale(this.topY())) / Math.max(1, this.hitY() - this.topY());
+  }
+  private projectTime(deltaMs: number): number {
+    const speed = (this.presentation?.preferences.scrollSpeed ?? 340) / 1000;
+    // Translação uniforme no plano do braço, vista por uma câmera fixa: y = hit - d / (1 + k*d).
+    // A velocidade configurada corresponde à velocidade em pixels nos receptores.
+    // Limita apenas o trecho já fora da tela para não cruzar o plano da câmera.
+    const distance = Math.max(this.timeAtY(this.viewport.height + 80), deltaMs) * speed;
+    return this.hitY() - distance / (1 + this.projectionSlope() * distance);
+  }
+  private timeAtY(y: number): number {
+    const speed = (this.presentation?.preferences.scrollSpeed ?? 340) / 1000;
+    const distance = this.hitY() - y;
+    // Inversa da mesma projeção, usada no culling de notas, grade e superfície.
+    return distance / Math.max(0.001, 1 - this.projectionSlope() * distance) / speed;
+  }
+  private horizonAlpha(y: number): number {
+    return Math.max(0, Math.min(1, (y - this.topY()) / Math.max(1, this.viewport.height * 0.04)));
+  }
   private highwayWidth(y: number): number {
     const presentation = this.presentation; if (!presentation) return this.viewport.width;
-    const top = this.topY(); const progress = Math.max(0, Math.min(1, (y - top) / Math.max(1, this.viewport.height - top)));
+    const top = this.topY(); const progress = (y - top) / Math.max(1, this.viewport.height - top);
     const near = presentation.profile.projection.nearWidthRatio;
     const far = near + (presentation.profile.projection.farWidthRatio - near) * this.perspectiveAmount();
-    return this.viewport.width * (far + (near - far) * progress);
+    const referenceWidth = Math.min(this.viewport.width,
+      this.viewport.height * presentation.profile.projection.maximumWidthHeightRatio);
+    return Math.max(1, referenceWidth * (far + (near - far) * progress));
   }
   private highwayLeft(y: number): number {
     const center = this.viewport.width * (this.presentation?.profile.projection.vanishingPointXRatio ?? 0.5);
@@ -533,12 +694,14 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
   }
   private laneWidth(y: number): number { return this.highwayWidth(y) / HIGHWAY_FRET_ORDER.length; }
   private laneCenter(y: number, lane: number): number { return this.highwayLeft(y) + this.laneWidth(y) * (lane + 0.5); }
-  private depthScale(y: number): number {
+  private trackDepthScale(y: number): number {
+    return this.highwayWidth(y) / Math.max(1, this.highwayWidth(this.hitY()));
+  }
+  private noteDepthScale(y: number): number {
     const presentation = this.presentation; if (!presentation) return 1;
-    const top = this.topY(); const progress = Math.max(0, Math.min(1, (y - top) / Math.max(1, this.hitY() - top)));
-    const maximum = presentation.profile.notes.maximumScale;
-    const far = maximum + (presentation.profile.notes.minimumScale - maximum) * this.perspectiveAmount();
-    return far + (maximum - far) * progress;
+    // A nota ocupa a mesma fração da pista até os receptores e mantém a escala após passar por eles.
+    const { minimumScale, maximumScale } = presentation.profile.notes;
+    return Math.max(minimumScale, Math.min(maximumScale, this.trackDepthScale(y) * maximumScale));
   }
 }
 

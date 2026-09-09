@@ -103,6 +103,6 @@ onBeforeUnmount(() => {
   content: '';
   pointer-events: none;
 }
-.training-highway { display: block; width: 100%; height: clamp(360px, 62vh, 680px); }
-@media (max-width: 599px) { .training-highway { height: min(58vh, 520px); min-height: 380px; } }
+.training-highway { display: block; width: 100%; height: clamp(400px, 68vh, 740px); }
+@media (max-width: 599px) { .training-highway { height: min(64vh, 560px); min-height: 400px; } }
 </style>

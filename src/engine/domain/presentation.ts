@@ -27,6 +27,7 @@ export interface HighwayPresentationProfile extends VersionedReference {
     readonly vanishingPointXRatio: number;
     readonly farWidthRatio: number;
     readonly nearWidthRatio: number;
+    readonly maximumWidthHeightRatio: number;
     readonly safeMarginRatio: number;
     readonly defaultIntensity: number;
     readonly minimumIntensity: number;
@@ -36,6 +37,8 @@ export interface HighwayPresentationProfile extends VersionedReference {
   readonly laneGapRatio: number;
   readonly hitLine: { readonly positionRatio: number; readonly width: number };
   readonly visualSpeed: { readonly defaultPixelsPerSecond: number; readonly minimum: number; readonly maximum: number };
+  /** Distância na superfície, em pixels equivalentes na altura dos receptores. */
+  readonly surface: { readonly repeatDistance: number; readonly contrast: number };
   readonly notes: {
     readonly strumShape: HighwayNoteShape;
     readonly hopoShape: HighwayNoteShape;
@@ -76,10 +79,11 @@ export interface HighwayPresentationSnapshot {
 }
 
 export const FRETSENSE_HIGHWAY_PROFILE: HighwayPresentationProfile = immutableCopy({
-  schemaVersion: 1, id: 'fretsense-highway', version: '1.1.0', displayName: 'Fretsense Highway',
+  schemaVersion: 1, id: 'fretsense-highway', version: '1.4.0', displayName: 'Fretsense Highway',
   projection: {
-    mode: 'perspective', vanishingPointXRatio: 0.5, farWidthRatio: 0.34, nearWidthRatio: 0.9,
-    safeMarginRatio: 0.04, defaultIntensity: 0.86, minimumIntensity: 0, maximumIntensity: 1,
+    mode: 'perspective', vanishingPointXRatio: 0.5, farWidthRatio: 0.28, nearWidthRatio: 0.84,
+    maximumWidthHeightRatio: 1.1,
+    safeMarginRatio: 0.025, defaultIntensity: 0.86, minimumIntensity: 0, maximumIntensity: 1,
   },
   lanes: [
     { fret: 'G', position: 1, color: '#31d466', highContrastColor: '#54f48a' },
@@ -89,16 +93,17 @@ export const FRETSENSE_HIGHWAY_PROFILE: HighwayPresentationProfile = immutableCo
     { fret: 'O', position: 5, color: '#ff7b2d', highContrastColor: '#ffa05f' },
   ],
   laneGapRatio: 0.013,
-  hitLine: { positionRatio: 0.76, width: 4 },
+  hitLine: { positionRatio: 0.86, width: 3 },
   visualSpeed: { defaultPixelsPerSecond: 340, minimum: 180, maximum: 600 },
+  surface: { repeatDistance: 160, contrast: 0.16 },
   notes: {
-    strumShape: 'circle', hopoShape: 'diamond', tapShape: 'square', baseRadius: 20,
-    minimumScale: 0.52, maximumScale: 1.14, chordConnectorWidth: 7,
+    strumShape: 'circle', hopoShape: 'circle', tapShape: 'square', baseRadius: 24,
+    minimumScale: 0.28, maximumScale: 1, chordConnectorWidth: 7,
   },
   sustains: { width: 11, brokenDash: [7, 7] },
   markers: { subdivision: 2, beatWidth: 1.25, measureWidth: 2.5 },
   feedback: {
-    durationMs: 360, maximumActiveEffects: 16,
+    durationMs: 320, maximumActiveEffects: 16,
     priority: ['hit', 'sustain-complete', 'early', 'late', 'extra', 'miss', 'sustain-broken'],
   },
   hud: { accentToken: '--fs-accent', surfaceToken: '--fs-surface', textToken: '--fs-text' },
