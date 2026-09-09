@@ -238,16 +238,18 @@ export default {
     },
     visual: {
       title: 'Highway presentation',
-      description: 'These settings change only the visual reading. The selected values are frozen when the attempt starts.',
+      description: 'These settings change only the visual reading. Geometry and speed are frozen at start; effects, contrast, and reduced motion may change during the attempt.',
       speed: 'Visual speed: {value} px/s', noteScale: 'Note scale: {value}%',
       perspective: 'Perspective: {value}%', gridContrast: 'Grid contrast: {value}%',
       effects: 'Feedback effects', highContrast: 'High-contrast highway', presentation: 'Presentation',
       preview: 'Highway preview', previewLabel: 'Static preview of the five-lane highway.',
+      unavailable: 'Canvas 2D rendering is unavailable in this browser. End the attempt and use a compatible browser.',
       effectLevels: { full: 'Full', reduced: 'Reduced', off: 'Off' },
     },
     preview: {
       title: 'Planned-note preview', count: 'Showing {shown} of {total}', remaining: '{count} more planned notes',
       invalid: 'Invalid configuration at {path}: {message}',
+      resourceLimit: 'The configuration exceeds the local limit at {path}. Reduce duration, repetitions, or density to continue.',
     },
     summary: {
       title: 'Attempt summary',
@@ -291,6 +293,7 @@ export default {
     openCalibration: 'Open calibration', useSilent: 'Use silent mode',
     sessionStatus: 'Current attempt status', attemptState: 'Attempt state', combo: 'Combo', notes: 'Resolved notes', input: 'Inputs',
     pendingSustains: 'Active tails', progress: 'Exercise progress',
+    sessionAnnouncement: 'Attempt state: {state}.',
     highwayLabel: 'Five-lane highway. {current} of {total} notes resolved.',
     countdown: 'Get ready', paused: 'Practice paused',
     pausedDescription: 'Time and judgment are frozen. Restore your controls, then resume through a new count-in.',
@@ -314,6 +317,13 @@ export default {
     extraStrums: 'Extra strums', sustainCompletion: 'Completed sustains', brokenSustains: 'Broken sustains',
     directionCompliance: 'Correct alternation', duration: 'Active duration', unavailable: 'Unavailable',
     interruptions: 'No interruptions | {count} interruption | {count} interruptions',
+    diagnostics: {
+      title: 'Local support diagnostic',
+      description: 'Generate this data only when you need to report a problem. It includes versions, browser context, and technical IDs; nothing is sent automatically.',
+      version: 'App version', session: 'Session', profile: 'Input profile',
+      copy: 'Copy diagnostic', download: 'Download JSON', copied: 'Diagnostic copied.',
+      copyFailed: 'The diagnostic could not be copied. Use the JSON download.', downloaded: 'Diagnostic file prepared.',
+    },
     repeat: 'Repeat exercise', repeatSame: 'Repeat same chart', generateVariation: 'Generate variation',
     adaptation: {
       modeTitle: 'Adaptive mode', modeEnabled: 'Chain recommended blocks',

@@ -1,6 +1,8 @@
 <template>
   <div class="highway-shell">
+    <p v-if="!renderingAvailable" class="highway-unavailable" role="status">{{ unavailableLabel }}</p>
     <canvas
+      v-show="renderingAvailable"
       ref="canvas"
       class="training-highway"
       role="img"
@@ -23,13 +25,18 @@ const props = defineProps<{
   visualOffsetMs: number;
   activeFrets: FretMask;
   judgments: readonly JudgmentEvent[];
+  judgmentCount: number;
   label: string;
+  unavailableLabel: string;
 }>();
+const emit = defineEmits<{ availability: [available: boolean] }>();
 
 const quasar = useQuasar();
 const canvas = ref<HTMLCanvasElement | null>(null);
+const renderingAvailable = ref(true);
 let renderer: HighwayRenderer | null = null;
 let resize: ResizeObserver | null = null;
+let usingWindowResize = false;
 
 function draw() {
   renderer?.prepare({ chart: props.chart, presentation: props.presentation });
@@ -49,6 +56,11 @@ function resizeRenderer(width: number, height: number) {
   draw();
 }
 
+function resizeFromCanvas() {
+  const element = canvas.value;
+  if (element) resizeRenderer(element.clientWidth, element.clientHeight);
+}
+
 watch(
   () => [
     props.chart,
@@ -57,6 +69,7 @@ watch(
     props.visualOffsetMs,
     props.activeFrets,
     props.judgments,
+    props.judgmentCount,
   ],
   draw,
   { flush: 'sync' },
@@ -65,15 +78,25 @@ watch(() => quasar.dark.isActive, () => { renderer?.invalidateStyles(); draw(); 
 onMounted(() => {
   if (!canvas.value) return;
   renderer = new HighwayRenderer(canvas.value);
-  resize = new ResizeObserver(([entry]) => {
-    if (entry) resizeRenderer(entry.contentRect.width, entry.contentRect.height);
-  });
-  resize.observe(canvas.value);
-  resizeRenderer(canvas.value.clientWidth, canvas.value.clientHeight);
+  renderingAvailable.value = renderer.available;
+  emit('availability', renderer.available);
+  if (!renderer.available) return;
+  if (typeof ResizeObserver === 'function') {
+    resize = new ResizeObserver(([entry]) => {
+      if (entry) resizeRenderer(entry.contentRect.width, entry.contentRect.height);
+    });
+    resize.observe(canvas.value);
+  } else {
+    usingWindowResize = true;
+    window.addEventListener('resize', resizeFromCanvas);
+  }
+  resizeFromCanvas();
 });
 onBeforeUnmount(() => {
   resize?.disconnect();
   resize = null;
+  if (usingWindowResize) window.removeEventListener('resize', resizeFromCanvas);
+  usingWindowResize = false;
   renderer?.dispose();
   renderer = null;
 });
@@ -104,5 +127,6 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 .training-highway { display: block; width: 100%; height: clamp(400px, 68vh, 740px); }
+.highway-unavailable { min-height: 400px; margin: 0; padding: 32px; color: var(--fs-highway-text); background: var(--fs-highway); }
 @media (max-width: 599px) { .training-highway { height: min(64vh, 560px); min-height: 400px; } }
 </style>

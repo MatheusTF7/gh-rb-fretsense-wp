@@ -18,4 +18,10 @@ export class BoundedBuffer<T> {
   }
 
   snapshot(): readonly T[] { return Object.freeze([...this.items]); }
+
+  /** Copia somente o sufixo ainda não consumido por observadores incrementais. */
+  snapshotFrom(start: number): readonly T[] {
+    readInteger(start, 'buffer.start', 0, this.items.length);
+    return Object.freeze(this.items.slice(start));
+  }
 }

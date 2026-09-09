@@ -239,16 +239,18 @@ const messages: typeof enUS = {
     },
     visual: {
       title: 'Apresentação da highway',
-      description: 'Estas opções alteram somente a leitura visual. Os valores selecionados são congelados ao iniciar a tentativa.',
+      description: 'Estas opções alteram somente a leitura visual. Geometria e velocidade são congeladas ao iniciar; efeitos, contraste e redução de movimento podem mudar durante a tentativa.',
       speed: 'Velocidade visual: {value} px/s', noteScale: 'Escala das notas: {value}%',
       perspective: 'Perspectiva: {value}%', gridContrast: 'Contraste da grade: {value}%',
       effects: 'Efeitos de feedback', highContrast: 'Highway em alto contraste', presentation: 'Apresentação',
       preview: 'Prévia da highway', previewLabel: 'Prévia estática da highway de cinco pistas.',
+      unavailable: 'A renderização Canvas 2D está indisponível neste navegador. Encerre a tentativa e use um navegador compatível.',
       effectLevels: { full: 'Completa', reduced: 'Reduzida', off: 'Desativada' },
     },
     preview: {
       title: 'Prévia das notas planejadas', count: 'Exibindo {shown} de {total}', remaining: 'Mais {count} notas planejadas',
       invalid: 'Configuração inválida em {path}: {message}',
+      resourceLimit: 'A configuração excede o limite local em {path}. Reduza a duração, as repetições ou a densidade para continuar.',
     },
     summary: {
       title: 'Resumo da tentativa',
@@ -292,6 +294,7 @@ const messages: typeof enUS = {
     openCalibration: 'Abrir calibração', useSilent: 'Usar modo silencioso',
     sessionStatus: 'Estado da tentativa atual', attemptState: 'Estado da tentativa', combo: 'Combo', notes: 'Notas resolvidas', input: 'Entradas',
     pendingSustains: 'Caudas ativas', progress: 'Progresso do exercício',
+    sessionAnnouncement: 'Estado da tentativa: {state}.',
     highwayLabel: 'Highway de cinco pistas. {current} de {total} notas resolvidas.',
     countdown: 'Prepare-se', paused: 'Treino pausado',
     pausedDescription: 'O tempo e o julgamento estão congelados. Restaure os controles e retome com uma nova contagem.',
@@ -315,6 +318,13 @@ const messages: typeof enUS = {
     extraStrums: 'Strums extras', sustainCompletion: 'Sustains completos', brokenSustains: 'Sustains interrompidos',
     directionCompliance: 'Alternância correta', duration: 'Duração ativa', unavailable: 'Indisponível',
     interruptions: 'Nenhuma interrupção | {count} interrupção | {count} interrupções',
+    diagnostics: {
+      title: 'Diagnóstico local para suporte',
+      description: 'Gere estes dados somente quando precisar relatar um problema. Eles incluem versões, contexto do navegador e IDs técnicos; nada é enviado automaticamente.',
+      version: 'Versão do aplicativo', session: 'Sessão', profile: 'Perfil de entrada',
+      copy: 'Copiar diagnóstico', download: 'Baixar JSON', copied: 'Diagnóstico copiado.',
+      copyFailed: 'Não foi possível copiar. Use o download em JSON.', downloaded: 'Arquivo de diagnóstico preparado.',
+    },
     repeat: 'Repetir exercício', repeatSame: 'Repetir a mesma chart', generateVariation: 'Gerar variação',
     adaptation: {
       modeTitle: 'Modo adaptativo', modeEnabled: 'Encadear blocos recomendados',

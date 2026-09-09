@@ -303,7 +303,14 @@ export class IndexedDbSessionRepository implements SessionRepository, Adaptation
           request.transaction?.abort();
         }
       };
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        const database = request.result;
+        database.onversionchange = () => {
+          database.close();
+          this.databasePromise = null;
+        };
+        resolve(database);
+      };
       request.onerror = () => {
         if (migrationFailed || request.error?.name === 'VersionError') this.setMemory('migration-failed');
         else this.setMemory('unavailable');

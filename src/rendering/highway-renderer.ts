@@ -76,6 +76,7 @@ export class CanvasHighwayRenderer implements HighwayRendererBackend {
   private disposed = false;
 
   constructor(private readonly canvas: HTMLCanvasElement) { this.context = canvas.getContext('2d'); }
+  get available(): boolean { return !this.disposed && this.context !== null; }
 
   prepare({ chart, presentation }: HighwayPreparation): void {
     if (this.disposed) return;

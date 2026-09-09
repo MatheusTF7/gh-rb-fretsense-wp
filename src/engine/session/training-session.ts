@@ -30,6 +30,7 @@ export interface SessionView {
   readonly countdownRemainingMs: number;
   readonly activeFrets: FretMask;
   readonly inputCount: number;
+  readonly interruptionCount: number;
   readonly result: SessionResult | null;
 }
 
@@ -68,11 +69,16 @@ export class TrainingSession {
   getView(): SessionView {
     return Object.freeze({ state: this.state, sessionId: this.snapshot?.id ?? null,
       activeTimeMs: this.activeTimeMs, countdownRemainingMs: this.countdownRemainingMs,
-      activeFrets: this.activeFrets, inputCount: this.inputs.size, result: this.result });
+      activeFrets: this.activeFrets, inputCount: this.inputs.size,
+      interruptionCount: this.interruptions.length, result: this.result });
   }
 
   getInputs(): readonly NormalizedInputEvent[] { return this.inputs.snapshot(); }
   getJudgments(): readonly JudgmentEvent[] { return this.judge?.getEvents() ?? Object.freeze([]); }
+  getJudgmentsFrom(start: number): readonly JudgmentEvent[] {
+    return this.judge?.getEventsFrom(start) ?? Object.freeze([]);
+  }
+  getLastInputSequence(): number { return this.lastInputSequence; }
   getEvaluation(): SessionEvaluation | null { return this.evaluation; }
 
   /** Ativação explícita do julgamento fretsense-v1 antes da contagem. */
@@ -150,8 +156,11 @@ export class TrainingSession {
     if (this.runningSinceMs !== null) {
       this.activeTimeMs = Math.min(this.hardStopMs, this.accumulatedMs + now - this.runningSinceMs);
       if (this.judge) {
+        const previousEventCount = this.judge.eventCount;
         this.judge.advance(this.activeTimeMs);
-        this.evaluation = this.judge.getEvaluation();
+        if (this.judge.eventCount !== previousEventCount || this.judge.complete) {
+          this.evaluation = this.judge.getEvaluation();
+        }
         if (allowCompletion && this.judge.complete) {
           this.complete();
           return this.getView();
@@ -235,8 +244,11 @@ export class TrainingSession {
       source: { kind: snapshot.device.kind, deviceProfileId: snapshot.device.id, connectionId },
     };
     if (this.judge) {
+      const previousEventCount = this.judge.eventCount;
       this.judge.processInput(acceptedEvent);
-      this.evaluation = this.judge.getEvaluation();
+      if (this.judge.eventCount !== previousEventCount || this.judge.complete) {
+        this.evaluation = this.judge.getEvaluation();
+      }
       if (this.judge.complete) {
         // A ação está fora da tentativa: ela fecha o horizonte, mas não entra
         // no buffer nem altera a disponibilidade dos dados registrados.

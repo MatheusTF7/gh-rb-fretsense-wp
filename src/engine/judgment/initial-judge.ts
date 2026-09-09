@@ -93,7 +93,9 @@ export class InitialJudge {
     return this.cursor === this.notes.length && this.activeSustains.length === 0 && this.throughTimeMs > this.endTimeMs;
   }
 
+  get eventCount(): number { return this.records.size; }
   getEvents(): readonly JudgmentEvent[] { return this.records.snapshot(); }
+  getEventsFrom(start: number): readonly JudgmentEvent[] { return this.records.snapshotFrom(start); }
 
   /** Preparação/contagem: sincroniza estado sem fabricar ataques ou liberações. */
   setInputBaseline(frets: FretMask): void {

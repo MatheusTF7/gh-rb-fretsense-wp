@@ -34,6 +34,7 @@ export interface HighwayVisualEventUpdate {
 export interface HighwayRendererBackend {
   readonly id: string;
   readonly capabilities: readonly HighwayBackendCapability[];
+  readonly available: boolean;
   prepare(preparation: HighwayPreparation): void;
   resize(viewport: HighwayViewport): void;
   updateVisualEvents(update: HighwayVisualEventUpdate): void;

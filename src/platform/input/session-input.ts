@@ -22,7 +22,7 @@ export function createSessionInput(
     timeline: options.timeline ?? new SessionInputTimeline(session),
     getMode: (observedAtMs) => session.openInputWindow(observedAtMs) ? 'events' : 'baseline',
     canStart: () => ['ready', 'countdown', 'paused'].includes(session.getView().state),
-    sequenceStart: (session.getInputs().at(-1)?.sequence ?? -1) + 1,
+    sequenceStart: session.getLastInputSequence() + 1,
     onEvent(event) {
       const state = session.getView().state;
       if (state === 'running') session.recordInput(event);

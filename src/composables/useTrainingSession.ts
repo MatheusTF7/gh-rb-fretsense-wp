@@ -1,12 +1,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { onBeforeRouteLeave, useRoute } from 'vue-router';
 import type {
   CalibrationProfile, Chart, DrillConfig, DrillLevel, Fret, JudgmentEvent, NoteFrets,
   SessionMode, SessionResult, SessionSnapshot, Subdivision, Technique,
 } from '@/engine/domain';
 import {
-  countFrets, createHighwayPresentationSnapshot, EngineError, FRET_BITS, MANUAL_PATTERN_REFERENCE,
-  parseDrillConfig, requireCondition, sameReference,
+  countFrets, createHighwayPresentationSnapshot, ENGINE_LIMITS, EngineError, FRET_BITS,
+  MANUAL_PATTERN_REFERENCE, parseDrillConfig, requireCondition, sameReference, TICKS_PER_QUARTER,
 } from '@/engine/domain';
 import { DRILL_PRESETS, getDrillPreset, getTechniqueDescriptor } from '@/catalog';
 import { generateDrill } from '@/engine/generation';
@@ -38,9 +38,16 @@ export interface ConfigurationPreview {
   readonly chart: Chart;
 }
 
+export interface ConfigurationFailure {
+  readonly ok: false;
+  readonly code: EngineError['code'] | 'unknown';
+  readonly path: string;
+  readonly message: string;
+}
+
 const EMPTY_VIEW: SessionView = Object.freeze({
   state: 'idle', sessionId: null, activeTimeMs: 0, countdownRemainingMs: 0,
-  activeFrets: 0, inputCount: 0, result: null,
+  activeFrets: 0, inputCount: 0, interruptionCount: 0, result: null,
 });
 const FRET_ORDER: readonly Fret[] = ['G', 'R', 'Y', 'B', 'O'];
 
@@ -134,7 +141,8 @@ export function useTrainingSession() {
   const snapshot = shallowRef<SessionSnapshot | null>(null);
   const view = shallowRef<SessionView>(EMPTY_VIEW);
   const evaluation = shallowRef<SessionEvaluation | null>(null);
-  const judgments = shallowRef<readonly JudgmentEvent[]>(Object.freeze([]));
+  const judgmentBuffer: JudgmentEvent[] = [];
+  const judgments = shallowRef<readonly JudgmentEvent[]>(judgmentBuffer);
   const latestJudgment = shallowRef<JudgmentEvent | null>(null);
   const result = shallowRef<SessionResult | null>(null);
   const systemReducedMotion = ref(false);
@@ -188,6 +196,11 @@ export function useTrainingSession() {
     ? evaluation.value.metrics.hitNotes + evaluation.value.metrics.missedNotes : 0);
   const progress = computed(() => snapshot.value && snapshot.value.chart.notes.length
     ? resolvedNotes.value / snapshot.value.chart.notes.length : 0);
+  const judgmentCount = computed(() => evaluation.value?.judgmentCount ?? 0);
+  const durationMaximumBeats = computed(() => Math.min(
+    Math.floor(ENGINE_LIMITS.maximumTicks / TICKS_PER_QUARTER),
+    Math.max(1, Math.floor(ENGINE_LIMITS.maximumDurationMs * Number(bpm.value) / 60_000 || 1)),
+  ));
 
   function fretMask(): NoteFrets {
     return allowedFrets.value.reduce<number>((mask, fret) => mask | FRET_BITS[fret], 0) as NoteFrets;
@@ -276,14 +289,14 @@ export function useTrainingSession() {
     }
   });
 
-  const preview = computed<ConfigurationPreview | { readonly ok: false; readonly path: string; readonly message: string }>(() => {
+  const preview = computed<ConfigurationPreview | ConfigurationFailure>(() => {
     try {
       const config = buildConfig();
       return { ok: true, config, chart: generateDrill(config) };
     } catch (error) {
       return error instanceof EngineError
-        ? { ok: false, path: error.path, message: error.message }
-        : { ok: false, path: 'config', message: 'Configuration could not be generated.' };
+        ? { ok: false, code: error.code, path: error.path, message: error.message }
+        : { ok: false, code: 'unknown', path: 'config', message: 'Configuration could not be generated.' };
     }
   });
 
@@ -393,16 +406,21 @@ export function useTrainingSession() {
     evaluation.value = session.getEvaluation();
     result.value = view.value.result;
     const count = evaluation.value?.judgmentCount ?? 0;
-    if (count !== judgments.value.length) {
-      judgments.value = session.getJudgments();
-      latestJudgment.value = judgments.value.at(-1) ?? null;
+    if (count !== judgmentBuffer.length) {
+      const next = session.getJudgmentsFrom(judgmentBuffer.length);
+      judgmentBuffer.push(...next);
+      latestJudgment.value = judgmentBuffer.at(-1) ?? null;
     }
     const currentResult = result.value;
     const currentSnapshot = snapshot.value;
     if (currentResult && currentSnapshot && workspace.latestRecord?.result.sessionId !== currentResult.sessionId) {
       workspace.saveResult(currentSnapshot, currentResult);
-      void history.persist(currentSnapshot, currentResult, session.getInputs(), session.getJudgments());
-      void adaptation.evaluate(currentSnapshot, currentResult);
+      const completedSession = session;
+      window.setTimeout(() => {
+        void history.persist(currentSnapshot, currentResult,
+          completedSession.getInputs(), completedSession.getJudgments());
+        void adaptation.evaluate(currentSnapshot, currentResult);
+      }, 0);
     }
     if (view.value.state === 'paused' || view.value.state === 'completed' || view.value.state === 'aborted') {
       stopFrame();
@@ -444,7 +462,8 @@ export function useTrainingSession() {
     snapshot.value = null;
     view.value = EMPTY_VIEW;
     evaluation.value = null;
-    judgments.value = Object.freeze([]);
+    judgmentBuffer.length = 0;
+    judgments.value = judgmentBuffer;
     latestJudgment.value = null;
     result.value = null;
   }
@@ -542,7 +561,9 @@ export function useTrainingSession() {
       const previousResult = previous.getView().result;
       if (previousSnapshot && previousResult && workspace.latestRecord?.result.sessionId !== previousResult.sessionId) {
         workspace.saveResult(previousSnapshot, previousResult);
-        void history.persist(previousSnapshot, previousResult, previous.getInputs(), previous.getJudgments());
+        window.setTimeout(() => {
+          void history.persist(previousSnapshot, previousResult, previous.getInputs(), previous.getJudgments());
+        }, 0);
       }
       await releaseRuntime();
       const nextAudio = new SessionAudio(next, () => {
@@ -629,6 +650,15 @@ export function useTrainingSession() {
     await releaseRuntime();
   }
 
+  function pageHidden(): void {
+    if (!session || !['countdown', 'running'].includes(session.getView().state)) return;
+    session.pause('page-hidden');
+    stopInput();
+    audio?.metronome.stop();
+    refreshState();
+    stopFrame();
+  }
+
   async function reset() {
     await leave();
     session = null;
@@ -708,7 +738,9 @@ export function useTrainingSession() {
     discovery = new GamepadDiscovery();
     refreshDevices();
     discoveryTimer = setInterval(refreshDevices, 1000);
+    window.addEventListener('pagehide', pageHidden);
   });
+  onBeforeRouteLeave(async () => { await leave(); });
   onBeforeUnmount(() => {
     disposed = true;
     operation++;
@@ -720,6 +752,7 @@ export function useTrainingSession() {
     audio = null;
     if (discoveryTimer !== null) clearInterval(discoveryTimer);
     discovery?.dispose();
+    window.removeEventListener('pagehide', pageHidden);
     motionQuery?.removeEventListener('change', updateSystemMotion);
     motionQuery = null;
   });
@@ -732,6 +765,7 @@ export function useTrainingSession() {
     audioMode, calibrationId, availableCalibrations, discoveryUnavailable, starting, failure,
     snapshot, view, evaluation, judgments, latestJudgment, result, presentation, configurationLocked,
     preview, requirements, compatibility, directionGoalAvailable, sustainGoalAvailable,
+    durationMaximumBeats, judgmentCount,
     state, isActive, isPaused, isFinished, countdownBeat,
     resolvedNotes, progress, selectPreset, refreshDevices, startAttempt, pause, resume,
     restart: () => launchNext('restart'), repeat: () => launchNext('repeat'), vary: () => launchNext('vary'),

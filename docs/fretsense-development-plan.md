@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–15A revisadas estaticamente, sem confirmação em execução. Etapas 15B–20 pendentes.
+**Status:** etapas 01–15B revisadas estaticamente, sem confirmação em execução. Etapas 16–20 pendentes.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -648,21 +648,31 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Revisar estaticamente descarte de listeners, ciclos de renderização/captura, agendamentos de áudio, Workers e conexões de armazenamento.
-- [ ] Revisar pausa/retomada em foco perdido, aba oculta, áudio suspenso, desconexão e mudança de rota.
-- [ ] Garantir que interrupções não se convertam em uma sequência de misses nem provoquem retomada inesperada.
-- [ ] Evitar persistência síncrona, análise pesada e alocações desnecessárias por nota no caminho de gameplay.
-- [ ] Limitar buffers, duração, densidade de charts e trabalho por trecho; definir recuperação para configurações fora dos limites.
-- [ ] Disponibilizar diagnóstico local opcional com versão, perfil, semente e informações de sessão úteis para relatos do desenvolvedor, sem coleta remota automática.
-- [ ] Revisar foco, rótulos, contraste, pistas diferenciadas por símbolos, redução de efeitos e controles remapeáveis.
-- [ ] Evitar anúncios acessíveis a cada nota; priorizar estado da sessão, ações e resumo final.
-- [ ] Tratar redimensionamento e preferências visuais sem reiniciar o julgamento ou mudar a velocidade musical.
-- [ ] Documentar capacidades esperadas por entrada/navegador, distinguindo suporte planejado de compatibilidade confirmada pelo desenvolvedor.
-- [ ] Incorporar problemas relatados pelo desenvolvedor e ajustar limites com base nessas evidências, sem declarar latência ou desempenho medidos pelo agente.
+- [x] Revisar estaticamente descarte de listeners, ciclos de renderização/captura, agendamentos de áudio, Workers e conexões de armazenamento.
+- [x] Revisar pausa/retomada em foco perdido, aba oculta, áudio suspenso, desconexão e mudança de rota.
+- [x] Garantir que interrupções não se convertam em uma sequência de misses nem provoquem retomada inesperada.
+- [x] Evitar persistência síncrona, análise pesada e alocações desnecessárias por nota no caminho de gameplay.
+- [x] Limitar buffers, duração, densidade de charts e trabalho por trecho; definir recuperação para configurações fora dos limites.
+- [x] Disponibilizar diagnóstico local opcional com versão, perfil, semente e informações de sessão úteis para relatos do desenvolvedor, sem coleta remota automática.
+- [x] Revisar foco, rótulos, contraste, pistas diferenciadas por símbolos, redução de efeitos e controles remapeáveis.
+- [x] Evitar anúncios acessíveis a cada nota; priorizar estado da sessão, ações e resumo final.
+- [x] Tratar redimensionamento e preferências visuais sem reiniciar o julgamento ou mudar a velocidade musical.
+- [x] Documentar capacidades esperadas por entrada/navegador, distinguindo suporte planejado de compatibilidade confirmada pelo desenvolvedor.
+- [x] Incorporar problemas relatados pelo desenvolvedor e ajustar limites com base nessas evidências, sem declarar latência ou desempenho medidos pelo agente.
 
 **Entregáveis:** tratamento consistente de falhas, recursos revisados, garantias de acessibilidade e registro de limitações conhecidas.
 
 **Critério de conclusão:** a revisão manual não identifica recursos sem descarte, estados sem recuperação, caminhos essenciais inacessíveis ou limitações ocultas. Desempenho e compatibilidade em execução dependem de confirmação do desenvolvedor.
+
+**Registro da etapa — 2026-09-09:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** revisão e consolidação do ciclo de vida de captura, frame, áudio e IndexedDB; pausa explícita em ocultação/saída da página e encerramento antes de mudança de rota; entrega incremental de julgamentos; persistência pós-resultado retirada do frame final; limites e recuperação visíveis; diagnóstico local opcional; ajustes de foco, anúncios, controles interativos dentro da captura e preferências cosméticas durante a tentativa.
+- **Arquivos e decisões relevantes:** `src/App.vue`, `src/composables/useTrainingSession.ts`, `src/engine/{session,judgment}`, `src/platform/{input,storage,diagnostics}`, `src/rendering`, `src/components/training/{TrainingHighway,LocalDiagnostics}.vue`, `src/pages/PlayPage.vue`, traduções e [robustez, desempenho e acessibilidade](./robustness-accessibility.md). Interrupções congelam o tempo e exigem retomada explícita com nova contagem; efeitos, alto contraste e redução de movimento podem mudar sem alterar o snapshot musical, enquanto geometria/velocidade permanecem congeladas. Não há Worker nem coleta remota nesta versão.
+- **Revisão realizada:** somente análise estática manual de código, templates, imports, tipos, limites, listeners, timers, frames, estados e documentação; sem testes, lint, formatação automática, build, typecheck, execução da aplicação, preview ou navegador.
+- **Limitações e pendências:** análise detalhada continua síncrona após o fechamento musical, entre blocos, sob limites explícitos; desempenho e compatibilidade por navegador/dispositivo não foram medidos. Fechamento real em `pagehide`, APIs em modo privado e combinações concretas de hardware dependem de confirmação do desenvolvedor.
+- **Confirmação/erros informados pelo desenvolvedor:** os relatos anteriores sobre movimento, sensação de zoom e efeitos foram tratados na etapa 15A e preservados. Nenhuma confirmação em execução desta revisão foi recebida.
+- **Próxima etapa liberada:** etapa 16, documentação e preparação de entrega.
 
 ### Etapa 16 — Preparar documentação e entrega da primeira versão
 

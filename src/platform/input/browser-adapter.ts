@@ -109,7 +109,8 @@ export class BrowserInputAdapter implements InputAdapter {
   private accepts(event: KeyboardEvent): boolean {
     const target = event.target;
     return target instanceof Element && this.options.scope.contains(target)
-      && !target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')
+      && !target.closest('a[href],button,input,textarea,select,[contenteditable]:not([contenteditable="false"]),'
+        + '[role="button"],[role="checkbox"],[role="combobox"],[role="radio"],[role="slider"],[role="textbox"]')
       && !event.isComposing && !event.ctrlKey && !event.metaKey && !event.altKey;
   }
 

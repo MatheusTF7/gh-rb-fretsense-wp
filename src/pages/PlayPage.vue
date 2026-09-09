@@ -51,7 +51,7 @@
               <q-select v-model="lengthKind" :options="lengthKindOptions" emit-value map-options
                 :label="t('play.lengthKind')" :disable="starting" />
               <q-input v-model.number="lengthValue" type="number" min="1" step="1"
-                :max="lengthKind === 'repetitions' ? 128 : 3000"
+                :max="lengthKind === 'repetitions' ? 128 : durationMaximumBeats"
                 :label="t(lengthKind === 'repetitions' ? 'play.repetitions' : 'play.durationBeats')" :disable="starting" />
               <q-select v-model="focusSegment" :options="focusOptions" emit-value map-options clearable
                 :label="t('play.focusSegment')" :disable="starting || segmentOptions.length < 2" />
@@ -131,7 +131,9 @@
           </div>
 
           <FeedbackBanner v-if="!preview.ok" tone="error"
-            :message="t('play.preview.invalid', { path: preview.path, message: preview.message })" />
+            :message="preview.code === 'resource-limit'
+              ? t('play.preview.resourceLimit', { path: preview.path })
+              : t('play.preview.invalid', { path: preview.path, message: preview.message })" />
 
           <template v-else>
             <section class="attempt-summary" aria-labelledby="attempt-summary-title">
@@ -150,7 +152,9 @@
               <h3 id="visual-preview-title">{{ t('play.visual.preview') }}</h3>
               <TrainingHighway :chart="preview.chart" :presentation="presentation" :active-time-ms="0"
                 :visual-offset-ms="0" :active-frets="0" :judgments="emptyJudgments"
-                :label="t('play.visual.previewLabel')" />
+                :judgment-count="0"
+                :label="t('play.visual.previewLabel')" :unavailable-label="t('play.visual.unavailable')"
+                @availability="rendererAvailable = $event" />
             </section>
             <FeedbackBanner :tone="compatibility.compatible ? 'info' : 'error'"
               :message="t(`play.compatibility.${compatibility.reason ?? 'compatible'}`)" />
@@ -165,7 +169,8 @@
           </div>
           <div class="practice-actions">
             <q-btn unelevated color="primary" no-caps icon="play_arrow" :loading="starting"
-              :disable="!preview.ok || !compatibility.compatible" :label="t(`play.mode.start.${mode}`)" @click="startAttempt" />
+              :disable="!preview.ok || !compatibility.compatible || !rendererAvailable"
+              :label="t(`play.mode.start.${mode}`)" @click="startAttempt" />
             <q-btn v-if="profile.kind === 'gamepad'" outline no-caps icon="refresh" :label="t('play.refreshDevices')"
               :disable="starting" @click="refreshDevices" />
             <q-btn flat no-caps :to="{ name: 'devices' }" :label="t('play.configureDevice')" />
@@ -188,24 +193,26 @@
             </div>
           </header>
           <p class="sr-status" role="status" aria-live="polite">{{ fullscreenMessage }}</p>
+          <p class="sr-status" role="status" aria-live="polite">{{ sessionAnnouncement }}</p>
           <div class="gameplay-grid">
             <div class="highway-column">
               <q-linear-progress :value="progress" color="primary" track-color="grey-9" size="8px" rounded :aria-label="t('play.progress')" />
               <div class="highway-stage">
                 <TrainingHighway :chart="snapshot.chart" :presentation="activePresentation" :active-time-ms="view.activeTimeMs"
                   :visual-offset-ms="snapshot.calibration.visualOffsetMs" :active-frets="view.activeFrets"
-                  :judgments="judgments" :label="highwayLabel" />
-                <div v-if="state === 'countdown'" class="countdown-overlay" aria-live="polite">
+                  :judgments="judgments" :judgment-count="judgmentCount" :label="highwayLabel"
+                  :unavailable-label="t('play.visual.unavailable')" @availability="rendererAvailable = $event" />
+                <div v-if="state === 'countdown'" class="countdown-overlay" aria-hidden="true">
                   <span>{{ countdownBeat }}</span><p>{{ t('play.countdown') }}</p>
                 </div>
-                <div v-if="isPaused" class="pause-overlay" role="dialog" aria-modal="true" :aria-labelledby="'pause-title'">
+                <div v-if="isPaused" class="pause-overlay" role="region" :aria-labelledby="'pause-title'">
                   <q-icon name="pause_circle" size="56px" aria-hidden="true" />
                   <h2 id="pause-title">{{ t('play.paused') }}</h2><p>{{ t('play.pausedDescription') }}</p>
                   <q-btn ref="resumeButton" unelevated color="primary" no-caps icon="play_arrow" :loading="starting"
                     :label="t('play.resume')" @click="resumeAttempt" />
                 </div>
               </div>
-              <p class="judgment-feedback" role="status" aria-live="polite">{{ feedbackText }}</p>
+              <p class="judgment-feedback">{{ feedbackText }}</p>
             </div>
             <aside class="gameplay-status" :aria-label="t('play.sessionStatus')">
               <div class="gameplay-status__primary"><span>{{ t('play.combo') }}</span><strong>{{ evaluation?.metrics.finalCombo ?? 0 }}</strong></div>
@@ -217,6 +224,12 @@
                 <div class="secondary-status">
                   <span>{{ t('play.input') }}: {{ view.inputCount }}</span>
                   <span v-if="evaluation?.pendingSustains">{{ t('play.pendingSustains') }}: {{ evaluation.pendingSustains }}</span>
+                  <q-select v-model="ui.highway.effects" :options="effectOptions" emit-value map-options dense
+                    :label="t('play.visual.effects')" />
+                  <q-toggle v-model="ui.highway.highContrast" dense color="primary"
+                    :label="t('play.visual.highContrast')" />
+                  <q-toggle v-model="ui.reducedMotion" dense color="primary"
+                    :label="t('settings.reducedMotion')" />
                 </div>
               </q-expansion-item>
             </aside>
@@ -233,7 +246,7 @@
         </section>
       </template>
 
-      <section v-else-if="result" class="surface-card result-card" aria-labelledby="practice-result-title">
+      <section v-else-if="result" ref="resultCard" class="surface-card result-card" tabindex="-1" aria-labelledby="practice-result-title">
         <p class="eyebrow">{{ t(`play.ending.${result.ending.state}`) }}</p>
         <h2 id="practice-result-title">{{ t(result.ending.state === 'completed' ? 'play.resultTitle' : 'play.abortedTitle') }}</h2>
         <p class="muted-text">{{ t(result.ending.state === 'completed' ? 'play.resultDescription' : 'play.abortedDescription') }}</p>
@@ -272,6 +285,11 @@
           <q-btn flat no-caps icon="tune" :label="t('play.changeSetup')" @click="reset" />
         </div>
       </section>
+      <LocalDiagnostics v-if="snapshot && (isPaused || isFinished)" :snapshot="snapshot" :state="state"
+        :active-time-ms="view.activeTimeMs" :input-count="view.inputCount" :judgment-count="judgmentCount"
+        :interruption-count="view.interruptionCount"
+        :current-visual-preferences="activePresentation.preferences"
+        :result="result" :storage="history.storageState" />
     </div>
   </PageFrame>
 </template>
@@ -291,6 +309,7 @@ import FeedbackBanner from '@/components/FeedbackBanner.vue';
 import ChartPreview from '@/components/training/ChartPreview.vue';
 import FretLegend from '@/components/training/FretLegend.vue';
 import TrainingHighway from '@/components/training/TrainingHighway.vue';
+import LocalDiagnostics from '@/components/training/LocalDiagnostics.vue';
 import TrainingRecommendationCard from '@/components/reports/TrainingRecommendationCard.vue';
 
 const { t } = useI18n();
@@ -304,11 +323,14 @@ const {
   availableCalibrations, discoveryUnavailable, starting, failure, snapshot, view, evaluation, presentation,
   judgments, latestJudgment, result, preview, requirements, compatibility, state, isActive, isPaused,
   directionGoalAvailable, sustainGoalAvailable, isFinished, countdownBeat, resolvedNotes, progress,
+  durationMaximumBeats, judgmentCount,
   refreshDevices, startAttempt, pause, resume,
   restart, repeat, vary, applyRecommendation, adjustRecommendation, ignoreRecommendation, leave, reset,
 } = training;
 const gameplayArea = ref<HTMLElement | null>(null);
 const resumeButton = ref<ComponentPublicInstance | null>(null);
+const resultCard = ref<HTMLElement | null>(null);
+const rendererAvailable = ref(true);
 const focusMode = ref(false);
 const fullscreenActive = ref(false);
 const fullscreenMessage = ref('');
@@ -356,7 +378,22 @@ const calibrationOptions = computed(() => [
   }) })),
 ]);
 const highwayLabel = computed(() => t('play.highwayLabel', { current: resolvedNotes.value, total: snapshot.value?.chart.notes.length ?? 0 }));
-const activePresentation = computed(() => snapshot.value?.presentation ?? presentation.value);
+const activePresentation = computed(() => {
+  const frozen = snapshot.value?.presentation;
+  if (!frozen) return presentation.value;
+  return Object.freeze({
+    ...frozen,
+    preferences: Object.freeze({
+      ...frozen.preferences,
+      effects: presentation.value.preferences.effects,
+      highContrast: presentation.value.preferences.highContrast,
+      motion: presentation.value.preferences.motion,
+    }),
+  });
+});
+const sessionAnnouncement = computed(() => snapshot.value ? t('play.sessionAnnouncement', {
+  state: t(`play.state.${state.value}`),
+}) : '');
 const hasSustains = computed(() => snapshot.value?.chart.notes.some((note) => note.durationTicks > 0) ?? false);
 const requirementText = computed(() => requirements.value ? t('play.summary.requirements', {
   strum: t(requirements.value.needsStrum ? 'common.yes' : 'common.no'),
@@ -439,10 +476,12 @@ watch(isPaused, async (paused) => {
   const element = resumeButton.value?.$el;
   if (element instanceof HTMLElement) element.focus();
 });
-watch(isFinished, (finished) => {
+watch(isFinished, async (finished) => {
   if (!finished) return;
   focusMode.value = false;
   ui.setTrainingFocus(false);
+  await nextTick();
+  resultCard.value?.focus({ preventScroll: true });
 });
 onMounted(() => document.addEventListener('fullscreenchange', fullscreenChanged));
 onBeforeUnmount(() => {
