@@ -1,7 +1,7 @@
 {
   "name": "fretsense",
   "version": "0.0.1",
-  "description": "Browser-based procedural five-fret rhythm game trainer with adaptive drills, real-time performance analysis, error pattern detection, and on-device machine learning.",
+  "description": "Browser-based procedural five-fret rhythm trainer with adaptive drills, timing analysis, error diagnostics, and local session history.",
   "productName": "Fretsense",
   "author": "MatheusTF7 <matheuskillua77@gmail.com>",
   "type": "module",

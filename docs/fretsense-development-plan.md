@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–15B revisadas estaticamente, sem confirmação em execução. Etapas 16–20 pendentes.
+**Status:** etapas 01–16 revisadas estaticamente; M4 preparado, sem confirmação geral em execução ou publicação. Etapas 17–20 permanecem como expansões.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -35,7 +35,7 @@ No início do plano, o repositório continha a estrutura inicial do Quasar:
 | `src/css` | Base para tema, estilos globais e acessibilidade visual |
 | `quasar.config.ts` | TypeScript estrito e configuração do projeto; preservar convenções |
 
-A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. As etapas 09 e 10 entregaram o [catálogo procedural](./procedural-catalog.md) e a [prática/avaliação configuráveis](./practice-and-assessment.md); a etapa 11 acrescentou a [análise detalhada](./detailed-analysis.md) e a etapa 12, a [persistência e o histórico local](./session-persistence.md). Adaptação e progressão continuam nas etapas seguintes. A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
+A etapa 01 acrescentou os contratos iniciais em `src/engine/domain` e o perfil documentado em [regras de gameplay](./gameplay-rules.md). A etapa 02 substituiu a interface de exemplo por navegação do produto, catálogo informativo, estrutura da área de treino, estados de indisponibilidade e preferências visuais/idioma em memória. A etapa 03 implementou validação, geração inicial determinística, conversões musicais, snapshots imutáveis e ciclo de tentativas limitadas, descritos em [núcleo inicial](./engine-foundation.md). A etapa 04 acrescentou captura e mapeamento de teclado/Gamepad, monitor de entradas e persistência de perfis/preferências, descritos em [entrada e preferências](./input-and-preferences.md). A etapa 05 acrescentou relógio monotônico, conversão de timestamps, metrônomo Web Audio e calibração guiada/manual persistida por contexto, descritos em [relógio e calibração](./timing-and-calibration.md). A etapa 06 acrescentou julgamento inicial e a etapa 07 integrou os módulos em um primeiro [treino jogável](./playable-training.md). A etapa 08 completou [articulações e sustains](./articulations-and-sustains.md), direção e a renderização correspondente. As etapas 09 e 10 entregaram o [catálogo procedural](./procedural-catalog.md) e a [prática/avaliação configuráveis](./practice-and-assessment.md); a etapa 11 acrescentou a [análise detalhada](./detailed-analysis.md), a etapa 12, a [persistência e o histórico local](./session-persistence.md), e as etapas 13–14, [adaptação](./adaptive-training.md) e [relatórios/evolução](./reports-and-evolution.md). As etapas 15A–16 consolidaram apresentação, robustez e a [entrega 0.0.1](./release-0.0.1.md). A existência de configuração de PWA no arquivo padrão não significa que a experiência offline esteja pronta.
 
 ## 3. Marcos de entrega
 
@@ -680,18 +680,29 @@ Frets usam uma máscara de cinco bits. Acordes são uma nota com vários bits, n
 
 **Tarefas:**
 
-- [ ] Atualizar README com funcionalidades realmente disponíveis, navegação e links para regras e plano.
-- [ ] Documentar mapeamento, calibração, modos de treino, interpretação de métricas e recuperação de falhas.
-- [ ] Registrar as versões de esquema, catálogo, gerador, regras, apresentação e perfis de edição usadas na entrega.
-- [ ] Documentar limitações de dispositivos, teclado, precisão observável e diferenças em relação a perfis específicos de jogo/edição, sem declarar fidelidade não estudada.
-- [ ] Consolidar alterações e pendências materiais, separando requisitos implementados, confirmações do desenvolvedor e expansões futuras.
-- [ ] Preparar informações de hospedagem estática e contexto seguro para APIs de dispositivos, mantendo o roteamento hash escolhido.
-- [ ] Encaminhar empacotamento, execução, testes e publicação ao desenvolvedor responsável; o agente não executa essas ações sob as orientações atuais.
-- [ ] Registrar os erros relatados com contexto disponível, corrigir o código e entregar revisão estática das correções.
+- [x] Atualizar README com funcionalidades realmente disponíveis, navegação e links para regras e plano.
+- [x] Documentar mapeamento, calibração, modos de treino, interpretação de métricas e recuperação de falhas.
+- [x] Registrar as versões de esquema, catálogo, gerador, regras, apresentação e perfis de edição usadas na entrega.
+- [x] Documentar limitações de dispositivos, teclado, precisão observável e diferenças em relação a perfis específicos de jogo/edição, sem declarar fidelidade não estudada.
+- [x] Consolidar alterações e pendências materiais, separando requisitos implementados, confirmações do desenvolvedor e expansões futuras.
+- [x] Preparar informações de hospedagem estática e contexto seguro para APIs de dispositivos, mantendo o roteamento hash escolhido.
+- [x] Encaminhar empacotamento, execução, testes e publicação ao desenvolvedor responsável; o agente não executa essas ações sob as orientações atuais.
+- [x] Registrar os erros relatados com contexto disponível, corrigir o código e entregar revisão estática das correções.
 
 **Entregáveis:** documentação da versão, notas de entrega e pendências atualizadas. Esta etapa conclui M4 do trabalho de implementação.
 
 **Critério de conclusão:** os fluxos das etapas 01–15B estão implementados e descritos, sem pendências essenciais ocultas. O estado de publicação e funcionamento confirmado deve refletir somente o que o desenvolvedor efetivamente informou.
+
+**Registro da etapa — 2026-09-09:**
+
+- **Estado:** revisada estaticamente; M4 preparado para encaminhamento, ainda não publicado.
+- **Tarefas entregues:** README alinhado ao escopo real; [guia da primeira versão](./first-release-guide.md) com operação, métricas, dados locais e recuperação; [entrega 0.0.1](./release-0.0.1.md) com manifesto de versões, limitações, situação das confirmações e orientações de hospedagem segura em SPA/hash. A descrição do pacote deixou de anunciar aprendizado de máquina, que permanece na etapa 20.
+- **Correções documentais:** relatórios agora distinguem snapshots v1 sem apresentação de snapshots v2 com apresentação congelada; o fluxo de prática reconhece a persistência local e a recomendação já implementadas. Nenhuma alteração funcional no motor foi necessária nesta etapa.
+- **Decisões relevantes:** a entrega mantém `fretsense-v1@1.0.0`, `fretsense-catalog@1.0.0`, `procedural-catalog@1.0.0` e a apresentação base `fretsense-highway@1.4.0`; nenhum perfil de edição existe. A hospedagem indicada serve `dist/spa` por HTTPS e conserva `vueRouterMode: 'hash'`; publicação em subdiretório exige `build.publicPath` correspondente.
+- **Revisão realizada:** somente leitura e análise estática manual de documentação, contratos, constantes de versão, rotas, configuração, imports e coerência com a implementação. Não foram executados instalação, testes, lint, formatação automática, build, typecheck, aplicação, preview, navegador ou publicação.
+- **Limitações e pendências:** compatibilidade, precisão, desempenho, armazenamento, acessibilidade e aparência final continuam dependentes de confirmação em execução pelo desenvolvedor. WebHID, PWA/offline, perfis de edição e eventual IA local permanecem nas etapas 17–20 e não bloqueiam M4.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhum erro novo foi relatado para a etapa 16. O movimento e o novo estilo intermediário da etapa 15A foram observados; os ajustes posteriores para zoom, transições, hits e sustains, bem como as etapas 15B–16, seguem sem confirmação em execução.
+- **Encaminhamento:** o desenvolvedor responsável executará empacotamento, validações, confirmação nos ambientes-alvo e publicação; esta entrega não presume destino de hospedagem.
 
 ## 6. Etapas de expansão
 

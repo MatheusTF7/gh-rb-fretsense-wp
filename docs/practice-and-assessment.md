@@ -29,7 +29,7 @@ Após o encerramento há ações semanticamente distintas:
 
 - **repetir a mesma chart:** usa o snapshot anterior e cria outro ID de sessão;
 - **gerar variação:** troca a seed e materializa outra chart do gerador versionado;
-- **aplicar recomendação:** carrega a `resultingConfig` de uma recomendação disponível; a produção de recomendações pertence à etapa 13;
+- **aplicar recomendação:** carrega a `resultingConfig` de uma recomendação produzida pela política versionada da etapa 13;
 - **alterar configuração:** volta ao draft sem modificar o snapshot encerrado.
 
-O último snapshot e resultado ficam no workspace Pinia apenas durante a visita. A rota `/results/:id` aceita somente esse registro; IDs ausentes exibem recuperação para configuração ou catálogo. Voltar do resultado restaura preset, foco, modo, perfil, áudio e calibração usados no draft.
+O último snapshot e resultado ficam disponíveis imediatamente no workspace Pinia e tentativas finalizadas também são encaminhadas ao repositório local da etapa 12. A rota `/results/:id` consulta esse histórico; IDs ausentes exibem recuperação para histórico, configuração ou catálogo. Voltar do resultado restaura preset, foco, modo, perfil, áudio e calibração usados no draft quando esse contexto ainda está na visita.

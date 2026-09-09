@@ -12,9 +12,10 @@ análise não realizada, amostra vazia, amostra insuficiente e zero observado.
 
 O resultado mostra técnica, nível, BPM, chart, gerador, regra e janela de
 acerto, apresentação e edição opcionais, dispositivo, método/offsets de
-calibração e condição final. Apresentação e edição permanecem explicitamente
-como não registradas nas sessões atuais; seus contratos entram nas etapas 15A e
-19.
+calibração e condição final. Novas sessões com snapshot v2 registram a
+apresentação completa da etapa 15A; sessões v1 permanecem legíveis com esse dado
+ausente. A edição continua `null` até que um perfil estudado seja implementado
+na etapa 19.
 
 O diagnóstico continua separado em timing, frets, transições, acordes,
 direção de strum, sustains e recortes de técnica/trecho. Quando os julgamentos
