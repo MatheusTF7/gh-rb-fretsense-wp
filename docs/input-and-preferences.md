@@ -54,3 +54,5 @@ Falha de acesso ou gravação mantém alterações em memória e informa que nã
 ## Próxima integração
 
 A etapa 05 implementou relógio ativo da plataforma, áudio e calibração. A etapa 06 acrescentou o [julgador inicial](./initial-judgment.md), ativado por `TrainingSession.enableInitialJudgment()` antes da contagem; com ele, `recordInput` também julga a entrada aceita, sem exigir um segundo encaminhamento pelo adaptador. A etapa 07 conectou esses componentes à [área jogável](./playable-training.md). A existência dos adaptadores não confirma latência, combinações suportadas por um teclado específico ou compatibilidade de um modelo de guitarra; essas confirmações dependem do desenvolvedor e do hardware utilizado.
+
+A etapa 17 ampliou esse contrato com identificação conservadora de guitarras e o fallback [WebHID](./webhid-and-guitar-devices.md). Gamepad continua sendo o transporte preferencial quando disponível; perfis anteriores permanecem legíveis e recebem identidade `unrecognized` sem alterar seus mapeamentos.

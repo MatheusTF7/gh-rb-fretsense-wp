@@ -7,7 +7,17 @@ import type {
   VersionedReference,
 } from './music';
 
-export type InputSourceKind = 'keyboard' | 'gamepad';
+export type InputSourceKind = 'keyboard' | 'gamepad' | 'webhid';
+
+export interface DeviceRecognition {
+  readonly category: 'keyboard' | 'guitar' | 'gamepad' | 'unknown';
+  readonly family: 'guitar-hero' | 'rock-band' | 'other' | null;
+  /** A família é apenas uma classificação do nome informado pelo navegador/dispositivo. */
+  readonly basis: 'built-in' | 'reported-name' | 'unrecognized';
+  readonly productName: string | null;
+  readonly vendorId: number | null;
+  readonly productId: number | null;
+}
 
 export interface NormalizedInputEvent {
   /** Inteiro crescente por tentativa, inclusive quando timestamps são iguais. */
@@ -47,6 +57,14 @@ export type InputControl =
       readonly direction: 'positive' | 'negative';
       readonly pressThreshold: number;
       readonly releaseThreshold: number;
+    }
+  | {
+      /** Bit discreto de um input report WebHID; não atribui significado físico ao bit. */
+      readonly kind: 'hid-bit';
+      readonly reportId: number;
+      readonly byteIndex: number;
+      readonly bitIndex: number;
+      readonly activeValue: 1;
     };
 
 export interface DeviceProfile extends VersionedReference {
@@ -54,6 +72,8 @@ export interface DeviceProfile extends VersionedReference {
   readonly label: string;
   readonly kind: InputSourceKind;
   readonly hardwareId: string | null;
+  /** Identidade observável; perfis antigos recebem uma classificação conservadora ao serem lidos. */
+  readonly recognition: DeviceRecognition;
   readonly bindings: readonly {
     readonly control: InputControl;
     readonly action: InputAction;

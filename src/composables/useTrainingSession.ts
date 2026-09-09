@@ -14,8 +14,8 @@ import { TrainingSession, type SessionEvaluation, type SessionView } from '@/eng
 import { SessionAudio } from '@/platform/audio/session-audio';
 import { captureContext, createCalibration, matchesCalibration } from '@/platform/calibration/profiles';
 import {
-  createSessionInput, DEFAULT_KEYBOARD, GamepadDiscovery,
-  type BrowserInputAdapter, type GamepadConnection, type InputInterruption,
+  createSessionInput, DEFAULT_KEYBOARD, GamepadDiscovery, WebHidDiscovery,
+  type BrowserInputAdapter, type GamepadConnection, type InputInterruption, type WebHidConnection,
 } from '@/platform/input';
 import { SessionClock } from '@/platform/timing/session-clock';
 import { useCalibrationStore } from '@/stores/calibration';
@@ -135,6 +135,7 @@ export function useTrainingSession() {
   const audioMode = ref<'enabled' | 'silent'>('enabled');
   const calibrationId = ref<string | null>(null);
   const connections = shallowRef<readonly GamepadConnection[]>([]);
+  const hidConnections = shallowRef<readonly WebHidConnection[]>([]);
   const discoveryUnavailable = ref(false);
   const starting = ref(false);
   const failure = ref<PlayFailure | null>(null);
@@ -172,14 +173,23 @@ export function useTrainingSession() {
   const descriptor = computed(() => technique.value ? getTechniqueDescriptor(technique.value) : null);
   const profile = computed(() => ui.profiles.find((item) => item.id === profileId.value) ?? DEFAULT_KEYBOARD);
   const matchingConnections = computed(() => connections.value.filter((item) => item.hardwareId === profile.value.hardwareId));
+  const matchingHidConnections = computed(() => hidConnections.value.filter((item) => item.hardwareId === profile.value.hardwareId));
   const selectedConnection = computed(() => {
     const selection = ui.selectedGamepad;
     return selection ? matchingConnections.value.find((connection) =>
       connection.index === selection.index && connection.hardwareId === selection.hardwareId) : undefined;
   });
+  const selectedHidConnection = computed(() => {
+    const selection = ui.selectedWebHid;
+    return selection ? matchingHidConnections.value.find((connection) => connection.connectionId === selection.connectionId
+      && connection.hardwareId === selection.hardwareId) : undefined;
+  });
+  const matchingInputConnections = computed(() => profile.value.kind === 'webhid' ? matchingHidConnections.value : matchingConnections.value);
   const connectionId = computed({
-    get: () => selectedConnection.value?.connectionId ?? null,
-    set: (id: string | null) => ui.selectGamepad(matchingConnections.value.find((connection) => connection.connectionId === id) ?? null),
+    get: () => profile.value.kind === 'webhid' ? selectedHidConnection.value?.connectionId ?? null : selectedConnection.value?.connectionId ?? null,
+    set: (id: string | null) => profile.value.kind === 'webhid'
+      ? ui.selectWebHid(matchingHidConnections.value.find((connection) => connection.connectionId === id) ?? null)
+      : ui.selectGamepad(matchingConnections.value.find((connection) => connection.connectionId === id) ?? null),
   });
   const availableCalibrations = computed(() => calibrations.records.filter((item) =>
     sameReference(item.deviceProfile, profile.value) && item.context.audioMode === audioMode.value));
@@ -340,6 +350,7 @@ export function useTrainingSession() {
   let input: BrowserInputAdapter | null = null;
   let audio: SessionAudio | null = null;
   let discovery: GamepadDiscovery | null = null;
+  const hidDiscovery = new WebHidDiscovery();
   let discoveryTimer: ReturnType<typeof setInterval> | null = null;
   let motionQuery: MediaQueryList | null = null;
   let frame: number | null = null;
@@ -358,6 +369,17 @@ export function useTrainingSession() {
       connections.value = [];
       discoveryUnavailable.value = true;
     }
+    void refreshHidDevices();
+  }
+
+  async function refreshHidDevices() {
+    if (document.hidden || !hidDiscovery.available) return;
+    try {
+      hidConnections.value = await hidDiscovery.list();
+      if (!selectedHidConnection.value && matchingHidConnections.value.length === 1) {
+        ui.selectWebHid(matchingHidConnections.value[0] ?? null);
+      }
+    } catch { hidConnections.value = []; }
   }
 
   function resolveCalibration(sessionAudio: SessionAudio): CalibrationProfile {
@@ -446,15 +468,22 @@ export function useTrainingSession() {
     stopFrame();
   }
 
-  function createInput(target: TrainingSession): BrowserInputAdapter {
+  async function createInput(target: TrainingSession): Promise<BrowserInputAdapter> {
     const scope = captureArea.value;
     const targetSnapshot = target.getSnapshot();
     if (!scope || !targetSnapshot) throw new Error('capture-unavailable');
     const connection = selectedConnection.value;
     if (targetSnapshot.device.kind === 'gamepad' && !connection) throw new Error('device-unavailable');
+    await refreshHidDevices();
+    if (disposed || session !== target) throw new Error('device-unavailable');
+    const hid = selectedHidConnection.value;
+    if (targetSnapshot.device.kind === 'webhid' && !hid) throw new Error('device-unavailable');
+    if (hid) await hidDiscovery.open(hid);
+    if (disposed || session !== target) throw new Error('device-unavailable');
     return createSessionInput(target, {
       scope,
       ...(targetSnapshot.device.kind === 'gamepad' && connection ? { gamepad: connection } : {}),
+      ...(targetSnapshot.device.kind === 'webhid' && hid ? { webhid: hid } : {}),
     }, inputInterrupted, { onEvent: refreshState, onBaseline: refreshState });
   }
 
@@ -468,7 +497,7 @@ export function useTrainingSession() {
     result.value = null;
   }
 
-  function activatePrepared(next: TrainingSession, nextAudio: SessionAudio): void {
+  async function activatePrepared(next: TrainingSession, nextAudio: SessionAudio): Promise<void> {
     session = next;
     const nextSnapshot = next.getSnapshot();
     snapshot.value = nextSnapshot;
@@ -476,7 +505,7 @@ export function useTrainingSession() {
       seed.value = nextSnapshot.config.seed;
       saveDraft(nextSnapshot.config);
     }
-    const nextInput = createInput(next);
+    const nextInput = await createInput(next);
     input = nextInput;
     nextInput.start();
     if (!nextInput.capturing) throw new Error('device-unavailable');
@@ -532,7 +561,7 @@ export function useTrainingSession() {
       const calibration = resolveCalibration(nextAudio);
       next.prepare({ mode: mode.value, config, device: profile.value, calibration, presentation: presentation.value });
       next.enableInitialJudgment();
-      activatePrepared(next, nextAudio);
+      await activatePrepared(next, nextAudio);
     } catch (error) {
       if (!['idle', 'completed', 'aborted'].includes(next.getView().state)) next.abort('unrecoverable-error');
       session = null;
@@ -589,7 +618,7 @@ export function useTrainingSession() {
       }
       refreshDevices();
       adaptation.beginAttempt();
-      activatePrepared(next, nextAudio);
+      await activatePrepared(next, nextAudio);
     } catch (error) {
       if (next && !['idle', 'completed', 'aborted'].includes(next.getView().state)) next.abort('unrecoverable-error');
       session = previous;
@@ -624,7 +653,7 @@ export function useTrainingSession() {
         if (disposed || session !== target || target.getView().state !== 'paused') return;
       }
       stopInput();
-      const nextInput = createInput(target);
+      const nextInput = await createInput(target);
       input = nextInput;
       target.resume();
       nextInput.start();
@@ -752,13 +781,14 @@ export function useTrainingSession() {
     audio = null;
     if (discoveryTimer !== null) clearInterval(discoveryTimer);
     discovery?.dispose();
+    hidDiscovery.dispose();
     window.removeEventListener('pagehide', pageHidden);
     motionQuery?.removeEventListener('change', updateSystemMotion);
     motionQuery = null;
   });
 
   return {
-    ui, workspace, history, adaptation, captureArea, profileId, profile, connectionId, matchingConnections,
+    ui, workspace, history, adaptation, captureArea, profileId, profile, connectionId, matchingConnections: matchingInputConnections,
     presetId, selectedPreset, technique, level, descriptor, mode, bpm, seed, subdivision, allowedFrets,
     lengthKind, lengthValue, automaticStrum, minimumAccuracy, maximumErrors, consistentAttempts,
     requireArticulation, requireStrumDirection, requireFullSustains, focusSegment, segmentOptions,

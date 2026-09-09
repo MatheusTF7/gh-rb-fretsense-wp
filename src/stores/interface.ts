@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { DeviceProfile } from '@/engine/domain';
-import type { GamepadConnection } from '@/platform/input/contracts';
+import type { GamepadConnection, WebHidConnection } from '@/platform/input/contracts';
 import { getPreferencesRepository } from '@/platform/preferences/repository';
 
 export type ThemePreference = 'dark' | 'light' | 'system';
@@ -22,6 +22,7 @@ export const useInterfaceStore = defineStore('interface', {
       profiles: repository.snapshot.profiles,
       selectedProfileId: repository.snapshot.selectedProfileId,
       selectedGamepad: null as SelectedGamepad | null,
+      selectedWebHid: null as { readonly connectionId: string; readonly hardwareId: string } | null,
       storageStatus: repository.status,
       catalogSearch: '',
     };
@@ -60,6 +61,11 @@ export const useInterfaceStore = defineStore('interface', {
     selectGamepad(connection: GamepadConnection | null) {
       this.selectedGamepad = connection
         ? { index: connection.index, hardwareId: connection.hardwareId }
+        : null;
+    },
+    selectWebHid(connection: WebHidConnection | null) {
+      this.selectedWebHid = connection
+        ? { connectionId: connection.connectionId, hardwareId: connection.hardwareId }
         : null;
     },
     retryStorage() {

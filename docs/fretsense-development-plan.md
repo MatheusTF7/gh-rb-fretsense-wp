@@ -1,6 +1,6 @@
 # Plano de desenvolvimento do Fretsense
 
-**Status:** etapas 01–16 revisadas estaticamente; M4 preparado, sem confirmação geral em execução ou publicação. Etapas 17–20 permanecem como expansões.
+**Status:** etapas 01–17 revisadas estaticamente; M4 preparado, sem confirmação geral em execução ou publicação. Etapas 18–20 permanecem como expansões.
 **Objetivo:** entregar um treinador web de técnicas de Guitar Hero / Rock Band com cinco frets, exercícios configuráveis, avaliação de execução e progressão adaptativa.  
 **Referências:** [ideia do produto](./fretsense-idea.md), [orientações para agentes](../AGENTS.md), [dependências e scripts](../package.json) e [configuração Quasar](../quasar.config.ts).
 
@@ -710,13 +710,23 @@ As etapas abaixo fazem parte da evolução planejada e não bloqueiam M1–M4. D
 
 ### Etapa 17 — Ampliar dispositivos com WebHID
 
-- [ ] Priorizar modelos concretos que não sejam atendidos pelo adaptador Gamepad.
-- [ ] Consultar documentação oficial atual das APIs e dos dispositivos antes de definir compatibilidade.
-- [ ] Implementar adaptadores por formato de relatório conhecido, reutilizando entrada normalizada, mapeamento e calibração.
-- [ ] Tratar seleção, permissão negada, desconexão e indisponibilidade com retorno ao teclado/Gamepad.
-- [ ] Registrar capacidades adicionais, como botões solo distinguíveis, sem inferir ações que o hardware não reporta.
+- [x] Priorizar modelos concretos que não sejam atendidos pelo adaptador Gamepad.
+- [x] Consultar documentação oficial atual das APIs e dos dispositivos antes de definir compatibilidade.
+- [x] Implementar adaptadores por formato de relatório conhecido, reutilizando entrada normalizada, mapeamento e calibração.
+- [x] Tratar seleção, permissão negada, desconexão e indisponibilidade com retorno ao teclado/Gamepad.
+- [x] Registrar capacidades adicionais, como botões solo distinguíveis, sem inferir ações que o hardware não reporta.
 
 **Conclusão:** os modelos explicitamente atendidos usam o mesmo fluxo de treino, com limitações documentadas e confirmação de hardware a cargo do desenvolvedor.
+
+**Registro da etapa — 2026-09-09:**
+
+- **Estado:** revisada estaticamente.
+- **Tarefas entregues:** identificação conservadora de famílias Guitar Hero/Rock Band pelo nome reportado; identidade observável congelada no perfil; autorização, redescoberta e seleção WebHID; adaptador `discrete-bit-v1` integrado a mapeamento, monitor, calibração e treino; tratamento de recusa, indisponibilidade e desconexão com fallback preservado.
+- **Arquivos:** `src/engine/domain/input.ts`, parser de snapshot, `src/platform/input`, diagnóstico local, store de interface, páginas de dispositivos/calibração/treino, componente de mapeamento, mensagens `pt-BR`/`en-US` e [guitarras, Gamepad e WebHID](./webhid-and-guitar-devices.md).
+- **Decisões relevantes:** Gamepad permanece preferencial; a família não é inferida por VID/PID nem apresentada como compatibilidade comprovada; WebHID não persiste número de série; só bits discretos observados recebem mapeamento e controles extras não recebem semântica automática.
+- **Revisão realizada:** somente análise estática manual de código, imports, tipos, contratos, estados, persistência e documentação; sem validação automatizada ou execução da aplicação.
+- **Limitações e pendências:** nenhum modelo físico foi confirmado. Relatórios com hats/campos empacotados, sinais analógicos ou inicialização proprietária exigem um adaptador específico e permanecem fora do suporte explícito. Compatibilidade prática depende de navegador, sistema, driver, adaptador e revisão do hardware.
+- **Confirmação/erros informados pelo desenvolvedor:** nenhuma confirmação em execução recebida para guitarras GH/RB ou WebHID.
 
 ### Etapa 18 — Oferecer PWA e uso offline
 

@@ -123,7 +123,7 @@
 
           <div class="practice-fields">
             <q-select v-model="profileId" :options="profileOptions" emit-value map-options :label="t('play.profile')" :disable="starting" />
-            <q-select v-if="profile.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions"
+            <q-select v-if="profile.kind !== 'keyboard'" v-model="connectionId" :options="connectionOptions"
               emit-value map-options :label="t('play.connection')" :disable="starting" />
             <q-select v-model="audioMode" :options="audioOptions" emit-value map-options :label="t('play.audio')" :disable="starting" />
             <q-select v-model="calibrationId" :options="calibrationOptions" emit-value map-options
@@ -162,8 +162,10 @@
 
           <div class="practice-context">
             <p>{{ t('play.deviceSummary', { device: profile.label }) }}</p>
-            <p v-if="profile.kind === 'gamepad'" :class="{ 'text-negative': !matchingConnections.length }">
-              {{ t(discoveryUnavailable ? 'play.gamepadApiUnavailable' : matchingConnections.length ? 'play.gamepadReady' : 'play.gamepadMissing') }}
+            <p v-if="profile.kind !== 'keyboard'" :class="{ 'text-negative': !matchingConnections.length }">
+              {{ t(profile.kind === 'webhid'
+                ? matchingConnections.length ? 'play.webHidReady' : 'play.webHidMissing'
+                : discoveryUnavailable ? 'play.gamepadApiUnavailable' : matchingConnections.length ? 'play.gamepadReady' : 'play.gamepadMissing') }}
             </p>
             <p>{{ t(calibrationId ? 'play.savedCalibration' : 'play.defaultCalibration') }}</p>
           </div>
@@ -171,7 +173,7 @@
             <q-btn unelevated color="primary" no-caps icon="play_arrow" :loading="starting"
               :disable="!preview.ok || !compatibility.compatible || !rendererAvailable"
               :label="t(`play.mode.start.${mode}`)" @click="startAttempt" />
-            <q-btn v-if="profile.kind === 'gamepad'" outline no-caps icon="refresh" :label="t('play.refreshDevices')"
+            <q-btn v-if="profile.kind !== 'keyboard'" outline no-caps icon="refresh" :label="t('play.refreshDevices')"
               :disable="starting" @click="refreshDevices" />
             <q-btn flat no-caps :to="{ name: 'devices' }" :label="t('play.configureDevice')" />
           </div>
@@ -363,7 +365,10 @@ const focusOptions = computed(() => [
 ]);
 const ruleOptions = [{ value: 'fretsense-v1', label: 'Fretsense v1' }];
 const profileOptions = computed(() => training.ui.profiles.map((item) => ({ value: item.id, label: item.label })));
-const connectionOptions = computed(() => matchingConnections.value.map((item) => ({ value: item.connectionId, label: `${item.index + 1} · ${item.hardwareId}` })));
+const connectionOptions = computed(() => matchingConnections.value.map((item) => ({
+  value: item.connectionId,
+  label: `${'index' in item ? item.index + 1 + ' · ' : ''}${item.recognition.productName ?? item.hardwareId}`,
+})));
 const audioOptions = computed(() => [
   { value: 'enabled', label: t('play.audioEnabled') },
   { value: 'silent', label: t('play.audioSilent') },

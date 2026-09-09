@@ -5,9 +5,10 @@
     <section class="surface-card section-spacing">
       <div class="calibration-fields">
         <q-select :model-value="ui.selectedProfileId" :options="profileOptions" emit-value map-options :label="t('timing.profile')" :disable="busy" @update:model-value="ui.selectProfile" />
-        <q-select v-if="device.kind === 'gamepad'" v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('timing.connection')" :disable="busy" />
+        <q-select v-if="device.kind !== 'keyboard'" v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('timing.connection')" :disable="busy" />
       </div>
       <p v-if="device.kind === 'gamepad'">{{ t(discoveryError ? 'input.unavailable' : 'input.discovery') }}</p>
+      <p v-else-if="device.kind === 'webhid'">{{ t(hidDiscovery.available ? 'input.discoveryWebHid' : 'input.webHidUnavailable') }}</p>
       <q-btn flat no-caps :to="{ name: 'devices' }" :label="t('timing.devices')" />
       <q-option-group v-model="audioMode" :options="audioOptions" :disable="busy" inline color="primary" :aria-label="t('timing.audioMode')" />
       <template v-if="audioMode === 'enabled'">
@@ -83,7 +84,8 @@ import { visualTime } from '@/engine/timing/calibrated-time';
 import { sameReference } from '@/engine/domain/validation';
 import { useInterfaceStore } from '@/stores/interface';
 import { useCalibrationStore } from '@/stores/calibration';
-import { BrowserInputAdapter, DEFAULT_KEYBOARD, GamepadDiscovery, type GamepadConnection } from '@/platform/input';
+import { BrowserInputAdapter, DEFAULT_KEYBOARD, GamepadDiscovery, WebHidDiscovery,
+  type GamepadConnection, type WebHidConnection } from '@/platform/input';
 import { Metronome } from '@/platform/audio/metronome';
 import { GUIDED, GuidedCalibration, type CalibrationEstimate } from '@/platform/calibration/guided';
 import { captureContext, createCalibration, matchesCalibration } from '@/platform/calibration/profiles';
@@ -98,17 +100,28 @@ const calibrations = useCalibrationStore();
 const device = computed(() => ui.profiles.find((profile) => profile.id === ui.selectedProfileId) ?? DEFAULT_KEYBOARD);
 const profileOptions = computed(() => ui.profiles.map((profile) => ({ value: profile.id, label: profile.label })));
 const connections = shallowRef<readonly GamepadConnection[]>([]);
+const hidConnections = shallowRef<readonly WebHidConnection[]>([]);
 const matchingConnections = computed(() => connections.value.filter((connection) => connection.hardwareId === device.value.hardwareId));
+const matchingHidConnections = computed(() => hidConnections.value.filter((connection) => connection.hardwareId === device.value.hardwareId));
 const selectedConnection = computed(() => {
   const selection = ui.selectedGamepad;
   return selection ? matchingConnections.value.find((connection) =>
     connection.index === selection.index && connection.hardwareId === selection.hardwareId) : undefined;
 });
-const connectionId = computed({
-  get: () => selectedConnection.value?.connectionId ?? null,
-  set: (id: string | null) => ui.selectGamepad(matchingConnections.value.find((connection) => connection.connectionId === id) ?? null),
+const selectedHidConnection = computed(() => {
+  const selection = ui.selectedWebHid;
+  return selection ? matchingHidConnections.value.find((connection) => connection.connectionId === selection.connectionId
+    && connection.hardwareId === selection.hardwareId) : undefined;
 });
-const connectionOptions = computed(() => matchingConnections.value.map((connection) => ({ value: connection.connectionId, label: (connection.index + 1) + ' · ' + connection.hardwareId })));
+const connectionId = computed({
+  get: () => device.value.kind === 'webhid' ? selectedHidConnection.value?.connectionId ?? null : selectedConnection.value?.connectionId ?? null,
+  set: (id: string | null) => device.value.kind === 'webhid'
+    ? ui.selectWebHid(matchingHidConnections.value.find((connection) => connection.connectionId === id) ?? null)
+    : ui.selectGamepad(matchingConnections.value.find((connection) => connection.connectionId === id) ?? null),
+});
+const connectionOptions = computed(() => (device.value.kind === 'webhid' ? matchingHidConnections.value : matchingConnections.value)
+  .map((connection) => ({ value: connection.connectionId,
+    label: `${'index' in connection ? connection.index + 1 + ' · ' : ''}${connection.recognition.productName ?? connection.hardwareId}` })));
 const discoveryError = ref(false);
 const initialCalibration = latestCalibration(device.value);
 const audioMode = ref<'enabled' | 'silent'>(initialCalibration?.context.audioMode ?? 'enabled');
@@ -153,6 +166,7 @@ const storageMessage = computed(() => t(calibrations.storageStatus === 'memory' 
     : calibrations.records.length ? 'timing.storageSaved' : 'timing.storageEmpty'));
 
 let discovery: GamepadDiscovery | null = null;
+const hidDiscovery = new WebHidDiscovery();
 let discoveryTimer: ReturnType<typeof setInterval> | null = null;
 let frame: number | null = null;
 let tailTimer: ReturnType<typeof setTimeout> | null = null;
@@ -177,6 +191,16 @@ function refreshDevices() {
     }
   }
   catch { connections.value = []; discoveryError.value = true; }
+}
+
+async function refreshHidDevices() {
+  if (document.hidden || !hidDiscovery.available) return;
+  try {
+    hidConnections.value = await hidDiscovery.list();
+    if (!selectedHidConnection.value && matchingHidConnections.value.length === 1) {
+      ui.selectWebHid(matchingHidConnections.value[0] ?? null);
+    }
+  } catch { hidConnections.value = []; }
 }
 
 function stopRound() {
@@ -289,10 +313,17 @@ async function startRound(isGuided: boolean) {
   }
   if (disposed || token !== operation) return;
   state.value = 'idle';
-  refreshDevices();
+  refreshDevices(); await refreshHidDevices();
   const connection = selectedConnection.value;
   if (isGuided && device.value.kind === 'gamepad' && (!connection || connection.hardwareId !== device.value.hardwareId)) { message.value = 'mismatch'; return; }
+  const hid = selectedHidConnection.value;
+  if (isGuided && device.value.kind === 'webhid' && (!hid || hid.hardwareId !== device.value.hardwareId)) { message.value = 'mismatch'; return; }
   if (!validOffset(visualOffset.value)) { message.value = 'range'; return; }
+  if (isGuided && hid) {
+    try { await hidDiscovery.open(hid); }
+    catch { interruptRound('unavailable'); return; }
+  }
+  if (disposed || token !== operation) return;
   startAt.value = performance.now() + 300;
   displayNow.value = performance.now();
   if (isGuided) { collector = new GuidedCalibration(startAt.value); method.value = 'manual'; savedSampleCount.value = 0; }
@@ -304,6 +335,7 @@ async function startRound(isGuided: boolean) {
       let horizon = 0;
       input = new BrowserInputAdapter({ profile: device.value, scope: captureArea.value,
         ...(device.value.kind === 'gamepad' && connection ? { gamepad: connection } : {}),
+        ...(device.value.kind === 'webhid' && hid ? { webhid: hid } : {}),
         timeline: { sample(observed, stamp) {
           const normalized = normalizeInputTime(observed, stamp, performance.timeOrigin, (wall) => wall, horizon);
           horizon = normalized.sessionTimeMs; return normalized;
@@ -352,14 +384,16 @@ watch(outputLabel, () => {
 }, { flush: 'sync' });
 watch(connectionId, () => { if (busy.value) interruptRound('changed'); outputConfirmed.value = false; });
 onMounted(() => {
-  discovery = new GamepadDiscovery(); refreshDevices(); discoveryTimer = setInterval(refreshDevices, 1000);
+  discovery = new GamepadDiscovery(); refreshDevices(); void refreshHidDevices(); discoveryTimer = setInterval(() => {
+    refreshDevices(); void refreshHidDevices();
+  }, 1000);
   window.addEventListener('blur', lostFocus); document.addEventListener('visibilitychange', hidden);
   navigator.mediaDevices?.addEventListener('devicechange', contextChanged);
   captureArea.value?.addEventListener('focusout', focusLeft);
 });
 onBeforeUnmount(() => {
   disposed = true; stopRound(); void metronome.dispose();
-  discovery?.dispose(); if (discoveryTimer !== null) clearInterval(discoveryTimer);
+  discovery?.dispose(); hidDiscovery.dispose(); if (discoveryTimer !== null) clearInterval(discoveryTimer);
   window.removeEventListener('blur', lostFocus); document.removeEventListener('visibilitychange', hidden);
   navigator.mediaDevices?.removeEventListener('devicechange', contextChanged);
   captureArea.value?.removeEventListener('focusout', focusLeft);

@@ -152,7 +152,7 @@ const messages: typeof enUS = {
       'Frets e strums remapeáveis. A detecção de teclas simultâneas depende do seu teclado.',
     guitarTitle: 'Guitarra',
     guitarDescription:
-      'Mapeamento de guitarras reconhecidas como gamepads; configure os controles recebidos pelo navegador.',
+      'Mapeamento de guitarras reconhecidas como Gamepad ou autorizadas via WebHID; confirme os controles recebidos pelo navegador.',
     gamepadTitle: 'Controle convencional',
     gamepadDescription:
       'Mapeie botões e eixos. A direção do strum depende das ações distintas configuradas.',
@@ -285,6 +285,8 @@ const messages: typeof enUS = {
     calibrationDefault: 'Padrão sem offsets para este contexto',
     calibrationSaved: 'Salva · entrada {input} ms · visual {visual} ms',
     deviceSummary: 'Entrada selecionada: {device}', gamepadReady: 'Há uma conexão de Gamepad compatível disponível.',
+    webHidReady: 'O dispositivo WebHID autorizado está disponível.',
+    webHidMissing: 'Autorize e selecione o dispositivo WebHID associado a este perfil na página Dispositivos.',
     gamepadMissing: 'Conecte e selecione o Gamepad associado a este perfil.',
     gamepadApiUnavailable: 'A API de Gamepad está indisponível neste contexto.',
     savedCalibration: 'A calibração salva selecionada será capturada na tentativa.',

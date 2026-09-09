@@ -33,7 +33,8 @@ function bindingLabel(action: InputAction) {
   if (!control) return t('input.unassigned');
   if (control.kind === 'key') return control.code;
   if (control.kind === 'button') return t('input.button', { index: control.index });
-  return t('input.axis', { index: control.index, direction: t(`input.${control.direction}`) });
+  if (control.kind === 'axis') return t('input.axis', { index: control.index, direction: t(`input.${control.direction}`) });
+  return t('input.hidBit', { report: control.reportId, byte: control.byteIndex, bit: control.bitIndex, value: control.activeValue });
 }
 </script>
 

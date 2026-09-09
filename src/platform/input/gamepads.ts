@@ -1,4 +1,5 @@
 import type { GamepadConnection } from './contracts';
+import { recognizeInputDevice } from './recognition';
 
 let connectionSequence = 0;
 
@@ -18,7 +19,9 @@ export class GamepadDiscovery {
       present.add(device.index);
       if (this.connections.get(device.index)?.hardwareId !== device.id) {
         this.connections.set(device.index, Object.freeze({ index: device.index, hardwareId: device.id,
-          connectionId: `gamepad-connection:${++connectionSequence}` }));
+          connectionId: `gamepad-connection:${++connectionSequence}`,
+          recognition: recognizeInputDevice({ productName: device.id }),
+        }));
       }
     }
     for (const index of this.connections.keys()) if (!present.has(index)) this.connections.delete(index);

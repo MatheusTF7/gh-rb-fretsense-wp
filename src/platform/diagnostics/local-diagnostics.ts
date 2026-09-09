@@ -53,7 +53,8 @@ export function createLocalDiagnostic(context: LocalDiagnosticContext) {
       },
     },
     input: {
-      profile: { id: snapshot.device.id, version: snapshot.device.version, kind: snapshot.device.kind },
+      profile: { id: snapshot.device.id, version: snapshot.device.version, kind: snapshot.device.kind,
+        hardwareId: snapshot.device.hardwareId, recognition: snapshot.device.recognition },
       capabilities: snapshot.device.capabilities,
       calibration: {
         id: snapshot.calibration.id,
@@ -75,6 +76,7 @@ export function createLocalDiagnostic(context: LocalDiagnosticContext) {
         audioContext: typeof globalThis.AudioContext === 'function',
         fullscreen: typeof document.documentElement.requestFullscreen === 'function',
         gamepad: typeof navigator.getGamepads === 'function',
+        webHid: globalThis.isSecureContext === true && 'hid' in navigator,
         indexedDb: typeof globalThis.indexedDB !== 'undefined',
         resizeObserver: typeof globalThis.ResizeObserver === 'function',
       },

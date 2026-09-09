@@ -14,7 +14,8 @@ export function actionId(action: InputAction): string {
 
 export function controlId(control: InputControl): string {
   return control.kind === 'key' ? control.code : control.kind === 'button'
-    ? `button:${control.index}` : `axis:${control.index}:${control.direction}`;
+    ? `button:${control.index}` : control.kind === 'axis' ? `axis:${control.index}:${control.direction}`
+      : `hid:${control.reportId}:${control.byteIndex}:${control.bitIndex}:${control.activeValue}`;
 }
 
 /** Capacidades de direção vêm de ações distintas, não do nome/modelo do controle. */
@@ -53,6 +54,7 @@ export function withBindings(profile: DeviceProfile, bindings: DeviceProfile['bi
 
 export const DEFAULT_KEYBOARD = validateMapping({
   schemaVersion: 1, id: 'keyboard-default', version: '1.0.0', label: 'Keyboard', kind: 'keyboard', hardwareId: null,
+  recognition: { category: 'keyboard', family: null, basis: 'built-in', productName: null, vendorId: null, productId: null },
   bindings: ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'ArrowUp', 'ArrowDown', '', 'Escape']
     .flatMap((code, index) => code ? [{ control: { kind: 'key', code }, action: MAPPING_ACTIONS[index] }] : []),
   capabilities: { strum: 'directional', maximumSimultaneousFrets: null, confirmedChords: [], distinguishableExtraControls: [] },

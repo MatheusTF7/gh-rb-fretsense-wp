@@ -31,9 +31,17 @@ function nullableText(value: unknown, path: string): string | null {
 
 function parseControl(value: unknown, deviceKind: DeviceProfile['kind'], path: string): InputControl {
   const control = readRecord(value, path);
-  const kind = readChoice(control.kind, ['key', 'button', 'axis'], `${path}.kind`);
-  requireCondition(deviceKind === 'keyboard' ? kind === 'key' : kind !== 'key', path, 'Control kind does not match the device.');
+  const kind = readChoice(control.kind, ['key', 'button', 'axis', 'hid-bit'], `${path}.kind`);
+  requireCondition(deviceKind === 'keyboard' ? kind === 'key'
+    : deviceKind === 'gamepad' ? kind === 'button' || kind === 'axis' : kind === 'hid-bit', path, 'Control kind does not match the device.');
   if (kind === 'key') return { kind, code: readString(control.code, `${path}.code`) };
+  if (kind === 'hid-bit') return {
+    kind,
+    reportId: readInteger(control.reportId, `${path}.reportId`, 0, 255),
+    byteIndex: readInteger(control.byteIndex, `${path}.byteIndex`, 0, 4095),
+    bitIndex: readChoice(control.bitIndex, [0, 1, 2, 3, 4, 5, 6, 7], `${path}.bitIndex`),
+    activeValue: readChoice(control.activeValue, [1], `${path}.activeValue`),
+  };
   const pressThreshold = readNumber(control.pressThreshold, `${path}.pressThreshold`, 0, 1);
   const releaseThreshold = readNumber(control.releaseThreshold, `${path}.releaseThreshold`, 0, 1);
   requireCondition(releaseThreshold < pressThreshold, path, 'Release threshold must be below the press threshold.');
@@ -53,7 +61,7 @@ function parseAction(value: unknown, path: string): InputAction {
 export function parseDeviceProfile(value: unknown): DeviceProfile {
   const device = readRecord(value, 'device');
   const capabilities = readRecord(device.capabilities, 'device.capabilities');
-  const kind = readChoice(device.kind, ['keyboard', 'gamepad'], 'device.kind');
+  const kind = readChoice(device.kind, ['keyboard', 'gamepad', 'webhid'], 'device.kind');
   const bindings = readArray(device.bindings, 'device.bindings', limits.maximumBindings).map((value, index) => {
     const path = `device.bindings[${index}]`;
     const binding = readRecord(value, path);
@@ -62,15 +70,30 @@ export function parseDeviceProfile(value: unknown): DeviceProfile {
   const controls = new Set<string>();
   for (const { control } of bindings) {
     const key = control.kind === 'key' ? `key:${control.code}`
-      : control.kind === 'button' ? `button:${control.index}` : `axis:${control.index}:${control.direction}`;
+      : control.kind === 'button' ? `button:${control.index}` : control.kind === 'axis'
+        ? `axis:${control.index}:${control.direction}`
+        : `hid:${control.reportId}:${control.byteIndex}:${control.bitIndex}:${control.activeValue}`;
     requireCondition(!controls.has(key), 'device.bindings', 'A physical control cannot have multiple bindings.');
     controls.add(key);
   }
+  const recognition = device.recognition === undefined ? null : readRecord(device.recognition, 'device.recognition');
   const parsed: DeviceProfile = {
     ...readReference(device, 'device'),
     schemaVersion: readChoice(device.schemaVersion, [1], 'device.schemaVersion'),
     label: readString(device.label, 'device.label'), kind,
     hardwareId: nullableText(device.hardwareId, 'device.hardwareId'), bindings,
+    recognition: recognition ? {
+      category: readChoice(recognition.category, ['keyboard', 'guitar', 'gamepad', 'unknown'], 'device.recognition.category'),
+      family: recognition.family === null ? null : readChoice(recognition.family, ['guitar-hero', 'rock-band', 'other'], 'device.recognition.family'),
+      basis: readChoice(recognition.basis, ['built-in', 'reported-name', 'unrecognized'], 'device.recognition.basis'),
+      productName: nullableText(recognition.productName, 'device.recognition.productName'),
+      vendorId: recognition.vendorId === null ? null : readInteger(recognition.vendorId, 'device.recognition.vendorId', 0, 65_535),
+      productId: recognition.productId === null ? null : readInteger(recognition.productId, 'device.recognition.productId', 0, 65_535),
+    } : {
+      category: kind === 'keyboard' ? 'keyboard' : 'unknown', family: null,
+      basis: kind === 'keyboard' ? 'built-in' : 'unrecognized',
+      productName: nullableText(device.hardwareId, 'device.hardwareId'), vendorId: null, productId: null,
+    },
     capabilities: {
       strum: readChoice(capabilities.strum, ['directional', 'undirected', 'unavailable'], 'device.capabilities.strum'),
       maximumSimultaneousFrets: capabilities.maximumSimultaneousFrets === null ? null

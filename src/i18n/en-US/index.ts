@@ -151,7 +151,7 @@ export default {
       'Remappable frets and up/down strums. Simultaneous key detection depends on your keyboard.',
     guitarTitle: 'Guitar controller',
     guitarDescription:
-      'Map guitars recognized as gamepads using the controls received by the browser.',
+      'Map guitars recognized as Gamepads or authorized through WebHID, then confirm the controls received by the browser.',
     gamepadTitle: 'Conventional controller',
     gamepadDescription:
       'Map buttons and axes. Strum direction depends on the distinct actions configured.',
@@ -284,6 +284,8 @@ export default {
     calibrationDefault: 'Zero-offset default for this context',
     calibrationSaved: 'Saved · input {input} ms · visual {visual} ms',
     deviceSummary: 'Selected input: {device}', gamepadReady: 'A matching Gamepad connection is available.',
+    webHidReady: 'The authorized WebHID device is available.',
+    webHidMissing: 'Authorize and select the WebHID device associated with this profile on the Devices page.',
     gamepadMissing: 'Connect and select the Gamepad associated with this profile.',
     gamepadApiUnavailable: 'The Gamepad API is unavailable in this context.',
     savedCalibration: 'The selected saved calibration will be captured in the attempt.',

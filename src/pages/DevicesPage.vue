@@ -6,14 +6,29 @@
       <div class="device-fields">
         <q-select :model-value="savedDraftId" :options="profileOptions" emit-value map-options :label="t('input.profile')" :disable="capturing" @update:model-value="selectProfile" />
         <q-select v-model="connectionId" :options="connectionOptions" emit-value map-options :label="t('input.connection')" :disable="capturing" />
+        <q-select v-if="webHidSupported && draft.kind !== 'webhid'" v-model="hidConnectionId" :options="hidConnectionOptions" emit-value map-options
+          :label="t('input.webHidConnection')" :disable="capturing" />
       </div>
       <p>{{ t('input.discovery') }}</p>
       <p v-if="discoveryError" role="status">{{ t('input.unavailable') }}</p>
       <p v-else-if="connections.length === 0">{{ t('input.noGamepads') }}</p>
       <div class="row q-gutter-sm">
-        <q-btn outline no-caps :label="t('input.refresh')" :disable="capturing" @click="refreshDevices" />
+        <q-btn outline no-caps :label="t('input.refresh')" :disable="capturing" @click="refreshAllDevices" />
         <q-btn outline no-caps :label="t('input.newGamepad')" :disable="capturing || !selectedConnection" @click="newGamepadProfile" />
+        <q-btn outline no-caps icon="usb" :label="t('input.authorizeWebHid')" :disable="capturing || !webHidSupported" @click="authorizeWebHid" />
+        <q-btn outline no-caps :label="t('input.newWebHid')" :disable="capturing || !selectedHidConnection" @click="newWebHidProfile" />
       </div>
+      <p class="muted-text">{{ t(webHidSupported ? 'input.webHidPermission' : 'input.webHidUnavailable') }}</p>
+      <p v-if="draft.recognition.category === 'guitar'" class="device-recognition">
+        {{ t('input.guitarIdentified', { family: recognitionLabel(draft.recognition) }) }}
+      </p>
+      <p>{{ t('input.deviceIdentity', {
+        transport: t('input.transport.' + draft.kind),
+        product: draft.recognition.productName ?? t('input.unreported'),
+      }) }}</p>
+      <p v-if="draft.recognition.vendorId !== null && draft.recognition.productId !== null" class="muted-text">
+        {{ t('input.usbIdentity', { vendor: hexId(draft.recognition.vendorId), product: hexId(draft.recognition.productId) }) }}
+      </p>
       <q-input v-model="label" :maxlength="128" :label="t('input.label')" :disable="capturing" class="q-mt-md" />
       <p>{{ t('input.draft') }}</p>
       <q-btn color="primary" no-caps :label="t('input.save')" :disable="capturing" @click="saveProfile" />
@@ -55,7 +70,8 @@ import type { DeviceProfile, FretMask, InputAction, InputControl, NormalizedInpu
 import { FRET_BITS } from '@/engine/domain/music';
 import { countFrets } from '@/engine/domain/validation';
 import { parseDeviceProfile } from '@/engine/session/snapshot';
-import { BrowserInputAdapter, DEFAULT_KEYBOARD, GamepadDiscovery, actionId, controlId, validateMapping, withBindings, type GamepadConnection } from '@/platform/input';
+import { BrowserInputAdapter, DEFAULT_KEYBOARD, GamepadDiscovery, WebHidDiscovery, actionId, controlId,
+  recognitionLabel, validateMapping, webHidAvailable, withBindings, type GamepadConnection, type WebHidConnection } from '@/platform/input';
 import { useInterfaceStore } from '@/stores/interface';
 import PageFrame from '@/components/PageFrame.vue';
 import PageHeading from '@/components/PageHeading.vue';
@@ -69,18 +85,37 @@ const ui = useInterfaceStore();
 const draft = shallowRef<DeviceProfile>(ui.profiles.find((profile) => profile.id === ui.selectedProfileId) ?? DEFAULT_KEYBOARD);
 const label = ref(draft.value.label);
 const connections = shallowRef<readonly GamepadConnection[]>([]);
+const hidConnections = shallowRef<readonly WebHidConnection[]>([]);
 const selectedConnection = computed(() => {
   const selection = ui.selectedGamepad;
   return selection ? connections.value.find((connection) =>
     connection.index === selection.index && connection.hardwareId === selection.hardwareId) : undefined;
 });
+const selectedHidConnection = computed(() => {
+  const selection = ui.selectedWebHid;
+  return selection ? hidConnections.value.find((connection) => connection.connectionId === selection.connectionId
+    && connection.hardwareId === selection.hardwareId) : undefined;
+});
+const hidConnectionId = computed({
+  get: () => selectedHidConnection.value?.connectionId ?? null,
+  set: (id: string | null) => ui.selectWebHid(hidConnections.value.find((connection) => connection.connectionId === id) ?? null),
+});
 const connectionId = computed({
-  get: () => selectedConnection.value?.connectionId ?? null,
-  set: (id: string | null) => ui.selectGamepad(connections.value.find((connection) => connection.connectionId === id) ?? null),
+  get: () => draft.value.kind === 'webhid' ? selectedHidConnection.value?.connectionId ?? null : selectedConnection.value?.connectionId ?? null,
+  set: (id: string | null) => draft.value.kind === 'webhid'
+    ? ui.selectWebHid(hidConnections.value.find((connection) => connection.connectionId === id) ?? null)
+    : ui.selectGamepad(connections.value.find((connection) => connection.connectionId === id) ?? null),
 });
 const profileOptions = computed(() => ui.profiles.map((profile) => ({ value: profile.id, label: profile.label })));
 const savedDraftId = computed(() => ui.profiles.some((profile) => profile.id === draft.value.id) ? draft.value.id : null);
-const connectionOptions = computed(() => connections.value.map((connection) => ({ value: connection.connectionId, label: (connection.index + 1) + ' · ' + connection.hardwareId })));
+const connectionOptions = computed(() => draft.value.kind === 'webhid'
+  ? hidConnections.value.map((connection) => ({ value: connection.connectionId, label: connection.recognition.productName ?? connection.hardwareId }))
+  : connections.value.map((connection) => ({ value: connection.connectionId,
+    label: `${connection.index + 1} · ${connection.recognition.family ? recognitionLabel(connection.recognition) + ' · ' : ''}${connection.hardwareId}` })));
+const hidConnectionOptions = computed(() => hidConnections.value.map((connection) => ({
+  value: connection.connectionId,
+  label: `${connection.recognition.family ? recognitionLabel(connection.recognition) + ' · ' : ''}${connection.recognition.productName ?? connection.hardwareId}`,
+})));
 const discoveryError = ref(false);
 const captureArea = ref<HTMLElement | null>(null);
 const capturing = ref(false);
@@ -88,15 +123,19 @@ const learning = shallowRef<InputAction | null>(null);
 const mask = ref<FretMask>(0);
 const strums = ref(0);
 const lastStrum = ref<NormalizedInputEvent['strum']>(null);
-const message = ref<'invalid' | 'savedProfile' | 'selectedMismatch' | null>(null);
+const message = ref<'invalid' | 'savedProfile' | 'selectedMismatch' | 'webHidDenied' | null>(null);
 const interrupted = ref(false);
 const captureMessage = computed(() => learning.value ? t('input.waiting', { action: learning.value.kind === 'fret'
   ? learning.value.fret + ' · ' + t('frets.' + learning.value.fret) : t('input.' + actionId(learning.value)) })
   : t(capturing.value ? 'input.running' : interrupted.value ? 'input.interrupted' : 'input.idle'));
 let discovery: GamepadDiscovery | null = null;
+const hidDiscovery = new WebHidDiscovery();
+const webHidSupported = webHidAvailable();
 let adapter: BrowserInputAdapter | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 let identitySequence = 0;
+let operation = 0;
+let disposed = false;
 
 function identity(): string {
   return globalThis.crypto?.randomUUID?.() ?? Date.now() + '-' + ++identitySequence;
@@ -112,6 +151,34 @@ function refreshDevices() {
   catch { connections.value = []; discoveryError.value = true; }
 }
 
+async function refreshHidDevices() {
+  if (!webHidSupported || document.hidden) return;
+  try {
+    hidConnections.value = await hidDiscovery.list();
+    const compatible = hidConnections.value.filter((connection) => connection.hardwareId === draft.value.hardwareId);
+    if (!selectedHidConnection.value && compatible.length === 1) ui.selectWebHid(compatible[0] ?? null);
+  } catch { hidConnections.value = []; }
+}
+
+function refreshAllDevices() {
+  refreshDevices();
+  void refreshHidDevices();
+}
+
+async function authorizeWebHid() {
+  stopCapture(); message.value = null;
+  const token = operation;
+  try {
+    const granted = await hidDiscovery.request();
+    if (disposed || token !== operation) return;
+    if (granted.length === 0) { message.value = 'webHidDenied'; return; }
+    await refreshHidDevices();
+    if (disposed || token !== operation) return;
+    const selected = granted[0];
+    if (selected) ui.selectWebHid(hidConnections.value.find((item) => item.hardwareId === selected.hardwareId) ?? selected);
+  } catch { message.value = 'webHidDenied'; }
+}
+
 function selectOnlyCompatibleConnection() {
   if (draft.value.kind !== 'gamepad' || selectedConnection.value?.hardwareId === draft.value.hardwareId) return;
   const compatible = connections.value.filter((connection) => connection.hardwareId === draft.value.hardwareId);
@@ -119,6 +186,7 @@ function selectOnlyCompatibleConnection() {
 }
 
 function stopCapture() {
+  operation++;
   adapter?.dispose(); adapter = null;
   capturing.value = false; learning.value = null; mask.value = 0;
 }
@@ -139,7 +207,22 @@ function newGamepadProfile() {
   try {
     draft.value = parseDeviceProfile({ ...DEFAULT_KEYBOARD, id: 'gamepad-' + identity(), version: '1.0.0',
       label: connection.hardwareId.slice(0, 128) || 'Gamepad', kind: 'gamepad', hardwareId: connection.hardwareId,
+      recognition: connection.recognition,
       bindings: [], capabilities: { strum: 'unavailable', maximumSimultaneousFrets: null, confirmedChords: [], distinguishableExtraControls: [] }, calibrations: [],
+    });
+    label.value = draft.value.label; message.value = null;
+  } catch { message.value = 'invalid'; }
+}
+
+function newWebHidProfile() {
+  const connection = selectedHidConnection.value;
+  if (!connection) return;
+  stopCapture();
+  try {
+    draft.value = parseDeviceProfile({ ...DEFAULT_KEYBOARD, id: 'webhid-' + identity(), version: '1.0.0',
+      label: connection.recognition.productName?.slice(0, 128) || 'WebHID', kind: 'webhid', hardwareId: connection.hardwareId,
+      recognition: connection.recognition, bindings: [],
+      capabilities: { strum: 'unavailable', maximumSimultaneousFrets: null, confirmedChords: [], distinguishableExtraControls: [] }, calibrations: [],
     });
     label.value = draft.value.label; message.value = null;
   } catch { message.value = 'invalid'; }
@@ -185,19 +268,26 @@ function observeExtra(control: InputControl) {
   } });
 }
 
-function beginCapture(action?: InputAction) {
+async function beginCapture(action?: InputAction) {
   stopCapture(); message.value = null; interrupted.value = false;
+  const token = operation;
   if (!captureArea.value) return;
-  refreshDevices();
+  refreshDevices(); await refreshHidDevices();
+  if (disposed || token !== operation || !captureArea.value) return;
   const gamepad = selectedConnection.value;
   if (draft.value.kind === 'gamepad' && (!gamepad || gamepad.hardwareId !== draft.value.hardwareId)) { message.value = 'selectedMismatch'; return; }
+  const hid = selectedHidConnection.value;
+  if (draft.value.kind === 'webhid' && (!hid || hid.hardwareId !== draft.value.hardwareId)) { message.value = 'selectedMismatch'; return; }
   learning.value = action ?? null;
   strums.value = 0; lastStrum.value = null;
   const origin = performance.now();
   try {
+    if (hid) await hidDiscovery.open(hid);
+    if (disposed || token !== operation || !captureArea.value) return;
     adapter = new BrowserInputAdapter({ profile: action ? withBindings(draft.value, []) : draft.value,
       scope: captureArea.value, timeline: { sample: (now) => now - origin },
       ...(draft.value.kind === 'gamepad' && gamepad ? { gamepad } : {}),
+      ...(draft.value.kind === 'webhid' && hid ? { webhid: hid } : {}),
       onBaseline: observeFrets,
       onEvent(event) {
         observeFrets(event.activeFrets);
@@ -221,9 +311,12 @@ function saveProfile() {
 }
 
 function maskLabel(value: number) { return (Object.keys(FRET_BITS) as (keyof typeof FRET_BITS)[]).filter((fret) => value & FRET_BITS[fret]).join('+'); }
+function hexId(value: number) { return '0x' + value.toString(16).padStart(4, '0').toUpperCase(); }
 watch(connectionId, () => { stopCapture(); message.value = null; });
-onMounted(() => { discovery = new GamepadDiscovery(); refreshDevices(); timer = setInterval(refreshDevices, 1000); });
-onBeforeUnmount(() => { stopCapture(); if (timer !== null) clearInterval(timer); discovery?.dispose(); });
+onMounted(() => { discovery = new GamepadDiscovery(); refreshDevices(); void refreshHidDevices(); timer = setInterval(() => {
+  refreshDevices(); void refreshHidDevices();
+}, 1000); });
+onBeforeUnmount(() => { disposed = true; stopCapture(); if (timer !== null) clearInterval(timer); discovery?.dispose(); hidDiscovery.dispose(); });
 </script>
 
 <style scoped>
@@ -231,5 +324,6 @@ onBeforeUnmount(() => { stopCapture(); if (timer !== null) clearInterval(timer);
 .capture-area { padding: 1rem; border: 2px dashed currentColor; border-radius: 12px; }
 .capture-area:focus { outline: 3px solid var(--q-primary); outline-offset: 4px; }
 .extra-controls { overflow-wrap: anywhere; }
+.device-recognition { font-weight: 700; color: var(--fs-accent); }
 @media (max-width: 700px) { .device-fields { grid-template-columns: 1fr; } }
 </style>

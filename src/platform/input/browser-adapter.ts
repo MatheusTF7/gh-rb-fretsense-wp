@@ -6,6 +6,14 @@ import type { AdapterOptions, InputAdapter, InputInterruption } from './contract
 
 let keyboardConnection = 0;
 
+interface HidInputReportEventLike extends Event {
+  readonly device: object;
+  readonly reportId: number;
+  readonly data: DataView;
+}
+
+interface HidConnectionEventLike extends Event { readonly device: object; }
+
 /** Uma captura exclusiva, instalada somente por ação explícita no escopo focável. */
 export class BrowserInputAdapter implements InputAdapter {
   private static owner: BrowserInputAdapter | null = null;
@@ -20,6 +28,7 @@ export class BrowserInputAdapter implements InputAdapter {
   private states: boolean[] = [];
   private readonly keys = new Set<string>();
   private rawStates = new Map<string, boolean>();
+  private rawReports = new Map<string, Uint8Array>();
   private readonly axisReady = new Map<number, boolean>();
   private initialized = false;
   private readonly connectionId: string;
@@ -27,9 +36,12 @@ export class BrowserInputAdapter implements InputAdapter {
   constructor(private readonly options: AdapterOptions) {
     this.profile = validateMapping(options.profile);
     this.sequence = readInteger(options.sequenceStart ?? 0, 'input.sequenceStart', 0, Number.MAX_SAFE_INTEGER);
-    this.connectionId = options.gamepad?.connectionId ?? `keyboard-connection:${++keyboardConnection}`;
+    this.connectionId = options.gamepad?.connectionId ?? options.webhid?.connectionId ?? `keyboard-connection:${++keyboardConnection}`;
     if (this.profile.kind === 'gamepad' && (!options.gamepad || options.gamepad.hardwareId !== this.profile.hardwareId)) {
       throw new Error('Select a matching gamepad connection');
+    }
+    if (this.profile.kind === 'webhid' && (!options.webhid || options.webhid.hardwareId !== this.profile.hardwareId)) {
+      throw new Error('Select a matching WebHID connection');
     }
   }
 
@@ -37,6 +49,7 @@ export class BrowserInputAdapter implements InputAdapter {
   get available(): boolean {
     if (this.disposed) return false;
     if (this.profile.kind === 'keyboard') return true;
+    if (this.profile.kind === 'webhid') return this.options.webhid?.device.opened === true;
     try { return this.readGamepad() !== null; } catch { return false; }
   }
 
@@ -57,9 +70,12 @@ export class BrowserInputAdapter implements InputAdapter {
     if (this.profile.kind === 'keyboard') {
       window.addEventListener('keydown', this.keyDown);
       window.addEventListener('keyup', this.keyUp);
-    } else {
+    } else if (this.profile.kind === 'gamepad') {
       window.addEventListener('gamepaddisconnected', this.disconnected);
       this.poll();
+    } else {
+      this.options.webhid?.device.addEventListener('inputreport', this.hidReport);
+      this.hidApi()?.addEventListener('disconnect', this.hidDisconnected);
     }
   }
 
@@ -70,6 +86,7 @@ export class BrowserInputAdapter implements InputAdapter {
     this.states = [];
     this.keys.clear();
     this.rawStates.clear();
+    this.rawReports.clear();
     this.axisReady.clear();
     this.initialized = false;
     this.options.onBaseline(0);
@@ -85,6 +102,8 @@ export class BrowserInputAdapter implements InputAdapter {
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
     window.removeEventListener('gamepaddisconnected', this.disconnected);
+    this.options.webhid?.device.removeEventListener('inputreport', this.hidReport);
+    this.hidApi()?.removeEventListener('disconnect', this.hidDisconnected);
     if (BrowserInputAdapter.owner === this) BrowserInputAdapter.owner = null;
     this.clear();
   }
@@ -104,6 +123,46 @@ export class BrowserInputAdapter implements InputAdapter {
   };
   private readonly disconnected = (event: GamepadEvent) => {
     if (event.gamepad.index === this.options.gamepad?.index) this.interrupt('device-disconnected');
+  };
+
+  private hidApi(): EventTarget | null {
+    return (navigator as Navigator & { readonly hid?: EventTarget }).hid ?? null;
+  }
+
+  private readonly hidDisconnected = (rawEvent: Event) => {
+    const event = rawEvent as HidConnectionEventLike;
+    if (event.device === this.options.webhid?.device) this.interrupt('device-disconnected');
+  };
+
+  private readonly hidReport = (rawEvent: Event) => {
+    if (!this.active) return;
+    const event = rawEvent as HidInputReportEventLike;
+    if (event.device !== this.options.webhid?.device || event.reportId < 0 || event.reportId > 255) return;
+    const bytes = new Uint8Array(event.data.buffer.slice(event.data.byteOffset, event.data.byteOffset + event.data.byteLength));
+    const reportKey = `report:${event.reportId}`;
+    const previousBytes = this.rawReports.get(reportKey);
+    const baseline = previousBytes === undefined;
+    this.rawReports.set(reportKey, bytes);
+    try {
+      if (!baseline && this.options.onControl) {
+        for (let byteIndex = 0; byteIndex < bytes.length; byteIndex++) {
+          const changed = bytes[byteIndex]! ^ (previousBytes?.[byteIndex] ?? 0);
+          for (let bitIndex = 0; bitIndex < 8; bitIndex++) {
+            if ((changed & (1 << bitIndex)) === 0 || (bytes[byteIndex]! & (1 << bitIndex)) === 0) continue;
+            this.options.onControl({ kind: 'hid-bit', reportId: event.reportId, byteIndex, bitIndex,
+              activeValue: 1 });
+            if (!this.active) return;
+          }
+        }
+      }
+      const states = this.profile.bindings.map(({ control }, index) => control.kind === 'hid-bit'
+        ? control.reportId === event.reportId ? this.hidPressed(control, bytes) : this.states[index] ?? false
+        : false);
+      // WebHID não fornece timestamp do hardware; Event.timeStamp seria apenas outra observação do navegador.
+      // O assistente aprende somente após um baseline; treino/calibração aceitam o primeiro ataque observável.
+      this.process(states, this.options.onControl !== undefined && (baseline || !this.initialized), performance.now());
+      this.initialized = true;
+    } catch { this.interrupt('unavailable'); }
   };
 
   private accepts(event: KeyboardEvent): boolean {
@@ -144,11 +203,17 @@ export class BrowserInputAdapter implements InputAdapter {
   }
 
   private pressed(control: InputControl, device: Gamepad, previous: boolean): boolean {
-    if (control.kind === 'key') return false;
+    if (control.kind === 'key' || control.kind === 'hid-bit') return false;
     const value = control.kind === 'button' ? device.buttons[control.index]?.value
       : (device.axes[control.index] ?? NaN) * (control.direction === 'positive' ? 1 : -1);
     if (value === undefined || !Number.isFinite(value) || value > 1 || value < (control.kind === 'button' ? 0 : -1)) throw new Error('Control unavailable');
     return previous ? value > control.releaseThreshold : value >= control.pressThreshold;
+  }
+
+  private hidPressed(control: Extract<InputControl, { kind: 'hid-bit' }>, bytes: Uint8Array): boolean {
+    const byte = bytes[control.byteIndex];
+    if (byte === undefined) throw new Error('HID control unavailable');
+    return (byte >> control.bitIndex & 1) === control.activeValue;
   }
 
   private readonly poll = () => {
